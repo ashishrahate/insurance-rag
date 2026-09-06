@@ -33,16 +33,33 @@ python -m src.ingestion.bootstrap_collection
 
 ## Daily workflow
 
+Start deps (Docker + Qdrant + Ollama + models, warmed), work, then stop deps
+and log the session to `docs/session-log.md`.
+
+**PowerShell**
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\start.ps1   # Docker + Qdrant + Ollama + models, warmed
+powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 venv\Scripts\activate
 # ... work ...
-powershell -ExecutionPolicy Bypass -File scripts\stop.ps1    # append docs/session-log.md, stop deps
+powershell -ExecutionPolicy Bypass -File scripts\stop.ps1
 ```
 
-`start.ps1` is idempotent and self-heals a stray container on port 6333.
-`stop.ps1 -Full` also quits the Docker Desktop and Ollama apps;
-`stop.ps1 -Note "..."` adds a one-line summary to the session log.
+**Git Bash**
+
+```bash
+bash scripts/start.sh
+source venv/Scripts/activate
+# ... work ...
+bash scripts/stop.sh
+```
+
+Notes:
+- `start` is idempotent and self-heals a stray container on port 6333.
+  Add `--no-warm` / `-NoWarm` to skip warming the models.
+- `stop --full` / `-Full` also quits the Docker Desktop and Ollama apps.
+- `stop --note "..."` / `-Note "..."` adds a one-line summary to the log.
+- Both stop scripts append to the same `docs/session-log.md`.
 
 ## Verify
 
@@ -52,6 +69,44 @@ python test_pipeline.py
 
 Embeds a sample chunk, upserts it into `insurance_ca_v1`, runs a
 `state="CA"` filtered search, and asserts the chunk is retrieved.
+
+## Latency & run logging
+
+Every query and index run appends one JSON line to `logs/runs.jsonl` with
+per-stage timings plus Ollama's own counters (prefill/generation tok/s, model
+load time). Instrumentation is `perf_counter` deltas and a single post-hoc file
+write — it does not touch the inference path.
+
+```bash
+python -m src.ask "..."                         # prints a latency line
+python -m src.observability.report              # percentiles grouped by env
+python -m src.observability.report --group llm_model --last 50
+python -m src.observability.report --op index   # embedding throughput
+```
+
+**Comparing hardware.** Tag runs with `RUN_ENV`, then report over both logs:
+
+```bash
+RUN_ENV=local-cpu python -m src.ask "..."       # this machine
+RUN_ENV=colab-t4  python -m src.ask "..."       # on the GPU box
+python -m src.observability.report --file merged.jsonl   # cat both logs together
+```
+
+Env vars: `RUN_ENV` (tag, default `local-cpu`), `OBS_ENABLED=0` (disable the
+log write), `LOG_LEVEL`.
+
+### Baseline — local CPU (Intel Ultra 9 185H, no GPU), `llama3.2:3b`
+
+| Metric | p50 |
+|---|---|
+| `total_ms` (query) | 41,126 |
+| `llm_ms` | 40,880 (~99% of total) |
+| `qdrant_client_ms` | 177 (once per process; was 290 × N calls) |
+| `embed_ms` | 122 |
+| `qdrant_search_ms` | 31 |
+| generation | 12.0 tok/s |
+| prefill | 62.3 tok/s |
+| indexing | 2.59 chunks/s (49 chunks in 18.9 s) |
 
 ## Layout
 

@@ -54,6 +54,16 @@ OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
 # --- Retrieval ---
 RETRIEVE_K = 3  # chunks passed to the LLM; small corpus rarely needs more
 
+# --- Observability ---
+# Structured run records land in logs/runs.jsonl, one JSON line per query.
+# RUN_ENV tags each record so runs from different hardware stay comparable
+# (e.g. RUN_ENV=colab-t4 python -m src.ask "...").
+LOGS_DIR = PROJECT_ROOT / "logs"
+RUN_LOG_FILE = LOGS_DIR / "runs.jsonl"
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+RUN_ENV = os.getenv("RUN_ENV", "local-cpu")
+OBS_ENABLED = os.getenv("OBS_ENABLED", "1").lower() not in ("0", "false", "no")
+
 # --- Payload fields that get a Qdrant index: field name -> schema type ---
 PAYLOAD_INDEXES = {
     "state": "keyword",

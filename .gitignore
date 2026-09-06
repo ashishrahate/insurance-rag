@@ -20,6 +20,9 @@ data/processed/*
 # Local databases
 *.db
 
+# Run logs (append-only; copy them by hand when comparing hardware)
+logs/*.jsonl
+
 # Local Qdrant storage (only if bind-mounted into the repo)
 qdrant_storage/
 
@@ -28,3 +31,6 @@ qdrant_storage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# md files
+resume-star.md

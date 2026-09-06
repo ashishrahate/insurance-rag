@@ -16,3 +16,46 @@ Appended by `scripts/stop.ps1` at the end of each working session.
 - Uncommitted (2):
   - `?? scripts/start.ps1`
   - `?? scripts/stop.ps1`
+
+## 2026-09-05 22:11
+- **Note:** Bash test run: added scripts/start.sh + stop.sh
+- Branch `main`, HEAD `24fd183 added scripts for starting and stopping environment dependencies`
+- Qdrant `insurance_ca_v1`: 49 points
+- Commits this session (1):
+  - `24fd183 added scripts for starting and stopping environment dependencies`
+- Uncommitted (2):
+  - `?? scripts/start.sh`
+  - `?? scripts/stop.sh`
+
+## 2026-09-05 22:13
+- Branch `main`, HEAD `24fd183 added scripts for starting and stopping environment dependencies`
+- Qdrant `insurance_ca_v1`: 49 points
+- Commits this session: none
+- Uncommitted (4):
+  - `M README.md`
+  - `M docs/session-log.md`
+  - `?? scripts/start.sh`
+  - `?? scripts/stop.sh`
+
+## 2026-09-06 00:37
+- Branch `main`, HEAD `24fd183 added scripts for starting and stopping environment dependencies`
+- Qdrant `insurance_ca_v1`: 49 points
+- Commits this session: none
+- Uncommitted (17):
+  - `M .gitignore`
+  - `M "Challenges and Learnings.md"`
+  - `M README.md`
+  - `M config/settings.py`
+  - `M docs/session-log.md`
+  - `M src/ask.py`
+  - `M src/generation/generate.py`
+  - `M src/ingestion/chunk_and_index.py`
+  - `M src/retrieval/search.py`
+  - `?? docs/next-session.md`
+  - `?? scripts/start.sh`
+  - `?? scripts/stop.sh`
+  - `?? src/observability/__init__.py`
+  - `?? src/observability/logger.py`
+  - `?? src/observability/ollama_metrics.py`
+  - `?? src/observability/report.py`
+  - `?? src/observability/timing.py`

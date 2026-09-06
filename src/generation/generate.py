@@ -1,14 +1,25 @@
-"""Naive RAG: retrieve chunks, then ask the local LLM to answer from them."""
+"""Naive RAG: retrieve chunks, then ask the local LLM to answer from them.
+
+Instrumented for latency comparison across hardware. All measurement is
+perf_counter deltas plus Ollama's own counters; the single log write happens
+after the answer is assembled and cannot raise into the query path.
+"""
 import ollama
 
 from config.settings import (
+    EMBED_MODEL,
     LLM_MODEL,
     LLM_NUM_PREDICT,
     OLLAMA_KEEP_ALIVE,
     RETRIEVE_K,
 )
 from src.generation.prompt import build_messages
+from src.observability.logger import log_run, new_correlation_id
+from src.observability.ollama_metrics import extract_ollama_metrics
+from src.observability.timing import Stopwatch
 from src.retrieval.search import search
+
+REFUSAL_PREFIX = "The provided bulletins do not cover"
 
 
 def _sources(hits) -> list[dict]:
@@ -32,19 +43,62 @@ def _sources(hits) -> list[dict]:
 def answer_question(
     question: str, state: str | None = "CA", k: int = RETRIEVE_K
 ) -> dict:
-    hits = search(question, state=state, limit=k)
-    if not hits:
-        return {"answer": "No matching passages were retrieved.", "sources": [], "hits": []}
+    sw = Stopwatch()
+    cid = new_correlation_id()
 
-    messages = build_messages(question, hits)
-    resp = ollama.chat(
-        model=LLM_MODEL,
-        messages=messages,
-        keep_alive=OLLAMA_KEEP_ALIVE,
-        options={"num_predict": LLM_NUM_PREDICT},
-    )
-    return {
-        "answer": resp["message"]["content"].strip(),
-        "sources": _sources(hits),
-        "hits": hits,
+    hits = search(question, state=state, limit=k, sw=sw)
+
+    if not hits:
+        result = {
+            "answer": "No matching passages were retrieved.",
+            "sources": [],
+            "hits": [],
+        }
+        meta = {
+            "correlation_id": cid,
+            "status": "no_results",
+            **sw.snapshot(),
+        }
+        result["meta"] = meta
+        log_run({"op": "query", "question": question, "state": state, "k": k, **meta})
+        return result
+
+    with sw.stage("prompt_build"):
+        messages = build_messages(question, hits)
+
+    with sw.stage("llm"):
+        resp = ollama.chat(
+            model=LLM_MODEL,
+            messages=messages,
+            keep_alive=OLLAMA_KEEP_ALIVE,
+            options={"num_predict": LLM_NUM_PREDICT},
+        )
+
+    answer = resp["message"]["content"].strip()
+    sources = _sources(hits)
+
+    meta = {
+        "correlation_id": cid,
+        "status": "refused" if answer.startswith(REFUSAL_PREFIX) else "answered",
+        "llm_model": LLM_MODEL,
+        "embed_model": EMBED_MODEL,
+        "k": k,
+        "n_hits": len(hits),
+        "top_score": round(hits[0].score, 4),
+        "answer_chars": len(answer),
+        **extract_ollama_metrics(resp),
+        **sw.snapshot(),
     }
+
+    result = {"answer": answer, "sources": sources, "hits": hits, "meta": meta}
+
+    log_run(
+        {
+            "op": "query",
+            "question": question,
+            "state": state,
+            "doc_ids": [s["doc_id"] for s in sources],
+            **meta,
+        }
+    )
+    return result

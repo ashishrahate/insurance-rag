@@ -7,8 +7,28 @@ Run from the repo root:
 """
 import argparse
 
-from config.settings import RETRIEVE_K
+from config.settings import RETRIEVE_K, RUN_ENV
 from src.generation.generate import answer_question
+
+
+def _timing_line(meta: dict) -> str:
+    """Compact one-line latency summary."""
+    if not meta:
+        return ""
+    total = meta.get("total_ms", 0) / 1000.0
+    parts = []
+    for label, key in (("embed", "embed_ms"), ("qdrant", "qdrant_search_ms"),
+                       ("llm", "llm_ms")):
+        v = meta.get(key)
+        if isinstance(v, (int, float)):
+            parts.append(f"{label} {v:,.0f}ms")
+    tok = meta.get("gen_tok_s")
+    if tok:
+        parts.append(f"{tok:,.1f} tok/s")
+    if meta.get("ollama_load_ms"):
+        parts.append(f"load {meta['ollama_load_ms']:,.0f}ms")
+    return (f"[{RUN_ENV}] total {total:,.1f}s  ({' | '.join(parts)})  "
+            f"cid={meta.get('correlation_id', '?')}")
 
 
 def main() -> None:
@@ -17,6 +37,7 @@ def main() -> None:
     ap.add_argument("--state", default="CA", help="state filter, or 'all'")
     ap.add_argument("--k", type=int, default=RETRIEVE_K, help="chunks to retrieve")
     ap.add_argument("--show-chunks", action="store_true", help="print retrieved passages")
+    ap.add_argument("--quiet-timing", action="store_true", help="hide the latency line")
     args = ap.parse_args()
 
     state = None if args.state.lower() == "all" else args.state
@@ -40,6 +61,9 @@ def main() -> None:
         for i, h in enumerate(result["hits"], 1):
             print(f"\n  [{i}] {h.payload['chunk_id']}  score={h.score:.3f}")
             print("      " + h.payload["content"][:500].replace("\n", " ") + " ...")
+
+    if not args.quiet_timing:
+        print("\n" + _timing_line(result.get("meta", {})))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ Each entry: **Symptom → Root cause → Learning → Best solution → Applied 
 
 1. An in-corpus question returned a refusal *and still printed citations* — Phase 1
 2. Local LLM answers take 1–2 min per question — Phase 1
+3. A fixed ~290 ms client-construction cost hid behind the LLM bottleneck — Phase 1 / 2
 
 ---
 
@@ -205,3 +206,69 @@ resident and bound the work per call.
 - ✅ `RETRIEVE_K = 3` — default `k` in `answer_question()` and `src/ask.py`
 - ⏳ OpenAI generation provider — Phase 3
 - ✗ IPEX-LLM / Arc acceleration — declined
+
+---
+
+## 3. A fixed ~290 ms client-construction cost hid behind the LLM bottleneck
+
+**Phase:** 1 → 2 (found immediately after adding latency instrumentation)
+
+### Symptom
+
+The new run log showed `qdrant_client_ms` at ~209 ms p50 on every query — a
+stage nobody had thought about, because it is 0.5% of a 41 s CPU query and had
+never been measured.
+
+### Root cause
+
+`search()` called `get_client()` on every invocation, and `get_client()`
+constructed a brand-new `QdrantClient` each time. Construction is not free: it
+builds an HTTP session and, with the default `check_compatibility=True`, makes
+a server version-check round trip.
+
+Measured (median of 8 constructions):
+
+| | median |
+|---|---|
+| `QdrantClient(..., check_compatibility=True)` | 290 ms |
+| `QdrantClient(..., check_compatibility=False)` | 177 ms |
+
+### Learning
+
+1. **Fixed per-call overhead hides behind whatever currently dominates.** At
+   41 s of CPU LLM latency, 209 ms is 0.5% and reads as nothing. Move the LLM to
+   a GPU and `llm_ms` drops toward ~2 s — the *same* 209 ms becomes ~10%.
+   Percentages move; absolute costs don't. Profile and fix absolute overheads
+   **before** a hardware change, or they contaminate the comparison you were
+   trying to make.
+2. **It compounds in loops.** One CLI query constructs one client. The Phase 2
+   eval harness runs ~25 questions in a single process → 25 constructions
+   ≈ 7.2 s of pure setup, which would have been silently charged to
+   "retrieval" in the results table.
+3. **Benchmark with repeats.** A single-shot measurement made
+   `check_compatibility=False` look *slower* (303 ms vs 219 ms). Median-of-8
+   showed it 39% faster. Construction jitter was larger than the effect size —
+   one sample would have led to the wrong conclusion.
+4. **You cannot optimise what you do not measure.** This cost existed through
+   all of Phase 1 and was invisible until the observability framework landed.
+
+### Best solution
+
+- **Cache the client** — `@lru_cache(maxsize=1)` on `get_client()`, so a process
+  constructs exactly one. `get_client.cache_clear()` forces a fresh one in tests.
+- **Skip the version check** — `check_compatibility=False`. The server image is
+  pinned in `docker-compose.yml`, so the check spends a round trip confirming
+  something already known.
+- **Phase 3:** promote the cached client to a proper FastAPI lifespan singleton
+  (qdrant-client is safe to share across requests) rather than relying on an
+  `lru_cache` side effect.
+- **General rule adopted:** instrument first, fix fixed-cost overheads, *then*
+  change hardware — otherwise setup cost masquerades as workload.
+
+### Applied so far
+
+- ✅ `@lru_cache(maxsize=1)` on `get_client()` (`src/retrieval/search.py`)
+- ✅ `check_compatibility=False`
+- ✅ Verified: 5 searches in one process → **1,450 ms → 208 ms** of client setup;
+  single CLI query → 290 ms → 177 ms
+- ⏳ FastAPI lifespan singleton — Phase 3
