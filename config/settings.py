@@ -41,7 +41,18 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 EMBED_DIM = 768  # nomic-embed-text output dimensionality
 
 # --- LLM (Ollama) ---
-LLM_MODEL = os.getenv("LLM_MODEL", "llama3.1:8b")
+# Dev model is deliberately small: this machine has no Ollama-usable GPU, so
+# inference is 100% CPU. Phase 1 only needs the pipeline to work; real answer
+# quality comes from the Phase 3/5 OpenAI swap.
+LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2:3b")
+LLM_NUM_PREDICT = 300  # cap generated tokens (bounds worst-case latency)
+
+# Keep Ollama models resident between calls so back-to-back questions don't
+# pay the 5-20s reload tax (default keep_alive is only 5 min).
+OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
+
+# --- Retrieval ---
+RETRIEVE_K = 3  # chunks passed to the LLM; small corpus rarely needs more
 
 # --- Payload fields that get a Qdrant index: field name -> schema type ---
 PAYLOAD_INDEXES = {

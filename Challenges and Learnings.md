@@ -5,6 +5,11 @@ root causes, and the best fix (not just the one applied on the day).
 
 Each entry: **Symptom → Root cause → Learning → Best solution → Applied so far.**
 
+## Index
+
+1. An in-corpus question returned a refusal *and still printed citations* — Phase 1
+2. Local LLM answers take 1–2 min per question — Phase 1
+
 ---
 
 ## 1. An in-corpus question returned a refusal *and still printed citations*
@@ -143,3 +148,60 @@ Add comparison / synthesis questions across the near-duplicate clusters
 - ⏳ Score-threshold guardrail (A) — Phase 3.
 - ⏳ Structured response contract with real `cited` (C) — Phase 3.
 - ⏳ Comparison questions in the eval set (D) — Phase 2.
+
+---
+
+## 2. Local LLM answers take 1–2 min per question
+
+**Phase:** 1
+
+### Symptom
+
+Every `python -m src.ask "..."` call takes ~60–120 s.
+
+### Root cause
+
+**No GPU that Ollama can use.** The machine has an Intel Arc *integrated* GPU,
+which Ollama does not support (it needs NVIDIA CUDA or AMD ROCm; Intel requires a
+separate IPEX-LLM build). `ollama ps` confirms `llama3.1:8b … 100% CPU`.
+
+So each answer is an 8B model (4.9 GB, Q4) running entirely on CPU:
+
+- **prompt prefill** — `k=5` chunks × ~300 words + system prompt ≈ 2,000–2,500
+  tokens processed on CPU → ~20–60 s
+- **generation** — 150–400 tokens at ~5–10 tok/s → ~20–80 s
+- **model reload** — Ollama's default `keep_alive` is 5 min; spaced-out
+  questions reload 4.9 GB from disk → +5–20 s
+
+Embedding (`nomic-embed-text`) and Qdrant search are <1 s combined — not
+implicated.
+
+### Learning
+
+The dev-loop bottleneck is **local CPU inference of an 8B model, not the RAG
+code**. Match the local model to the job: Phase 1 only needs the pipeline to
+*work* — real answer quality is the Phase 3/5 OpenAI swap. Keep the model
+resident and bound the work per call.
+
+### Best solution
+
+- **Small dev model** — `llama3.2:3b` instead of `llama3.1:8b`. ~2–3× faster on
+  CPU; adequate for "pipeline works".
+- **Keep models warm** — `keep_alive="30m"` on every Ollama call, so
+  back-to-back questions skip the reload.
+- **Cap output** — `num_predict=300`; bounds worst-case generation time.
+- **Lower default `k`** — 5 → 3; ~40% less prefill, and this corpus rarely needs
+  5 chunks.
+- **OpenAI `gpt-4o-mini` for generation** — near-instant, ~$0.0001/query;
+  arrives with the Phase 3 provider switch.
+- **Not worth it now:** Intel Arc acceleration via IPEX-LLM — a real speedup but
+  a separate Ollama build and another moving part mid-Phase-1.
+
+### Applied so far
+
+- ✅ `LLM_MODEL` → `llama3.2:3b` (`config/settings.py`)
+- ✅ `OLLAMA_KEEP_ALIVE = "30m"` — used by `embed.py` and `generate.py`
+- ✅ `LLM_NUM_PREDICT = 300` — passed as `options={"num_predict": ...}` in `generate.py`
+- ✅ `RETRIEVE_K = 3` — default `k` in `answer_question()` and `src/ask.py`
+- ⏳ OpenAI generation provider — Phase 3
+- ✗ IPEX-LLM / Arc acceleration — declined

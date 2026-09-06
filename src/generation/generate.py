@@ -1,7 +1,12 @@
 """Naive RAG: retrieve chunks, then ask the local LLM to answer from them."""
 import ollama
 
-from config.settings import LLM_MODEL
+from config.settings import (
+    LLM_MODEL,
+    LLM_NUM_PREDICT,
+    OLLAMA_KEEP_ALIVE,
+    RETRIEVE_K,
+)
 from src.generation.prompt import build_messages
 from src.retrieval.search import search
 
@@ -24,13 +29,20 @@ def _sources(hits) -> list[dict]:
     return sorted(seen.values(), key=lambda s: s["score"], reverse=True)
 
 
-def answer_question(question: str, state: str | None = "CA", k: int = 5) -> dict:
+def answer_question(
+    question: str, state: str | None = "CA", k: int = RETRIEVE_K
+) -> dict:
     hits = search(question, state=state, limit=k)
     if not hits:
         return {"answer": "No matching passages were retrieved.", "sources": [], "hits": []}
 
     messages = build_messages(question, hits)
-    resp = ollama.chat(model=LLM_MODEL, messages=messages)
+    resp = ollama.chat(
+        model=LLM_MODEL,
+        messages=messages,
+        keep_alive=OLLAMA_KEEP_ALIVE,
+        options={"num_predict": LLM_NUM_PREDICT},
+    )
     return {
         "answer": resp["message"]["content"].strip(),
         "sources": _sources(hits),

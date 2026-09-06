@@ -7,6 +7,7 @@ Run from the repo root:
 """
 import argparse
 
+from config.settings import RETRIEVE_K
 from src.generation.generate import answer_question
 
 
@@ -14,7 +15,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("question")
     ap.add_argument("--state", default="CA", help="state filter, or 'all'")
-    ap.add_argument("--k", type=int, default=5, help="chunks to retrieve")
+    ap.add_argument("--k", type=int, default=RETRIEVE_K, help="chunks to retrieve")
     ap.add_argument("--show-chunks", action="store_true", help="print retrieved passages")
     args = ap.parse_args()
 

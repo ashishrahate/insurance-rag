@@ -42,7 +42,7 @@ flowchart TB
         Q["question (CLI arg)"]
         SR["src/retrieval/search.py\nembed question -> Qdrant vector search (state filter)"]
         PR["src/generation/prompt.py\nbuild system + user messages from top-k chunks"]
-        GE["src/generation/generate.py\nollama.chat(llama3.1:8b)"]
+        GE["src/generation/generate.py\nollama.chat(llama3.2:3b)"]
         PRES["src/ask.py\nprint answer + deduped sources"]
         Q --> SR --> PR --> GE --> PRES
     end
@@ -74,11 +74,14 @@ Every module imports its constants from here. Env vars of the same name override
 | `CA_COLLECTION_ALIAS` | `insurance_ca_live` | Phase 5 (unused now) |
 | `EMBED_MODEL` | `nomic-embed-text` (Ollama) | embed |
 | `EMBED_DIM` | `768` | bootstrap (vector size) |
-| `LLM_MODEL` | `llama3.1:8b` (Ollama) | generate |
+| `LLM_MODEL` | `llama3.2:3b` (Ollama) — small on purpose: CPU-only inference, see below | generate |
+| `LLM_NUM_PREDICT` | `300` (max generated tokens) | generate |
+| `OLLAMA_KEEP_ALIVE` | `30m` (models stay resident between calls) | embed, generate |
+| `RETRIEVE_K` | `3` (chunks sent to the LLM) | generate, `ask.py` |
 | `PAYLOAD_INDEXES` | `{state: keyword, document_type: keyword, date_effective: datetime}` | bootstrap |
 
 External services assumed running: **Qdrant** (`docker compose up -d`, port 6333)
-and **Ollama** (native, serving `llama3.1:8b` + `nomic-embed-text`).
+and **Ollama** (native, serving `llama3.2:3b` + `nomic-embed-text`).
 
 ---
 
@@ -387,7 +390,7 @@ sequenceDiagram
     participant EMB as ingestion/embed.py
     participant OLL_E as Ollama (nomic-embed-text)
     participant QD as Qdrant (insurance_ca_v1)
-    participant OLL_L as Ollama (llama3.1:8b)
+    participant OLL_L as Ollama (llama3.2:3b)
 
     U->>ASK: question, --state, --k
     ASK->>ASK: state = None if --state == "all" else "CA"
@@ -404,7 +407,7 @@ sequenceDiagram
         GEN-->>ASK: {answer: "No matching passages were retrieved.", sources: [], hits: []}
     else has hits
         GEN->>GEN: build_messages(question, hits)
-        GEN->>OLL_L: ollama.chat(llama3.1:8b, [system, user])
+        GEN->>OLL_L: ollama.chat(llama3.2:3b, [system, user])
         OLL_L-->>GEN: message.content
         GEN-->>ASK: {answer, sources (deduped by doc_id), hits}
     end
@@ -418,7 +421,7 @@ sequenceDiagram
 ### 7.1 Retrieval — `src/retrieval/search.py`
 
 ```python
-search(query, state="CA", limit=5):
+search(query, state="CA", limit=3):   # generate.py passes RETRIEVE_K = 3
     client  = QdrantClient(localhost:6333)          # new client per call
     vector  = embed_text(query)                     # Ollama nomic-embed-text, 768-dim
     filter  = None if state is None else
@@ -472,20 +475,25 @@ Source: https://www.insurance.ca.gov/.../Bulletin-2025-7-....pdf
 - be concise, quote regulatory language when it matters.
 
 > The earlier, stricter prompt ("if the context does not contain the answer,
-> refuse") caused llama3.1:8b to refuse a valid *comparison* question because no
-> single passage stated the comparison verbatim. This is a known weakness of
-> **prompt-based refusal** and the reason Phase 3 moves refusal to a
-> retrieval-score threshold.
+> refuse") caused the dev LLM (then `llama3.1:8b`) to refuse a valid
+> *comparison* question because no single passage stated the comparison
+> verbatim. This is a known weakness of **prompt-based refusal** and the reason
+> Phase 3 moves refusal to a retrieval-score threshold. See
+> `Challenges and Learnings.md` #1.
 
 ### 7.3 Generation — `src/generation/generate.py`
 
 ```python
-answer_question(question, state="CA", k=5):
+answer_question(question, state="CA", k=RETRIEVE_K):   # RETRIEVE_K = 3
     hits = search(question, state, k)
     if not hits:
         return {"answer": "No matching passages were retrieved.", "sources": [], "hits": []}
     messages = build_messages(question, hits)
-    resp = ollama.chat(model="llama3.1:8b", messages=messages)   # no streaming, default options
+    resp = ollama.chat(
+        model="llama3.2:3b", messages=messages,
+        keep_alive=OLLAMA_KEEP_ALIVE,                 # "30m" - skip model reload
+        options={"num_predict": LLM_NUM_PREDICT},     # 300 - cap output length
+    )
     return {
         "answer":  resp["message"]["content"].strip(),
         "sources": _sources(hits),     # one row per doc_id, best score wins, sorted desc
@@ -560,3 +568,7 @@ Nothing in the query pipeline writes state. No cache, no logs, no request IDs
 4. **`date_effective` entirely null** — not extracted yet.
 5. **New `QdrantClient` per `search()` call** — fine at this scale, worth a
    shared client when the API lands.
+6. **CPU-only LLM inference.** No Ollama-usable GPU (Intel Arc iGPU
+   unsupported), so answers take tens of seconds. Mitigated with a small dev
+   model (`llama3.2:3b`), `keep_alive=30m`, `num_predict=300`, and `k=3`. See
+   `Challenges and Learnings.md` #2. Real fix = OpenAI provider in Phase 3.
