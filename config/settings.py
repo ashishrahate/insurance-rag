@@ -24,6 +24,10 @@ CA_BULLETINS_URL = (
 HTTP_HEADERS = {"User-Agent": "insurance-rag-bot/0.1 (educational RAG project)"}
 REQUEST_DELAY_SEC = 1.0
 
+# --- Chunking (naive fixed-size; Phase 2 sweeps these) ---
+CHUNK_SIZE_WORDS = 300
+CHUNK_OVERLAP_WORDS = 50
+
 # --- Qdrant ---
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))

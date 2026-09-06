@@ -28,6 +28,28 @@ HYPHEN_BREAK_RE = re.compile(r"(\w)-\n(\w)")
 MULTI_NEWLINE_RE = re.compile(r"\n{3,}")
 MIN_USEFUL_CHARS = 200  # below this, assume a scanned / image-only PDF
 
+# "DATE: February 25, 2025" in the bulletin header block
+DATE_LINE_RE = re.compile(r"^\s*DATE:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+DATE_FORMATS = ("%B %d, %Y", "%b %d, %Y", "%b. %d, %Y", "%B %d %Y", "%m/%d/%Y")
+
+
+def extract_date_issued(text: str) -> tuple[str | None, str | None]:
+    """Pull the header DATE: line and normalise to an ISO date (YYYY-MM-DD).
+
+    Returns (iso_date_or_None, raw_matched_string_or_None) so a failed parse
+    is still visible for debugging.
+    """
+    m = DATE_LINE_RE.search(text)
+    if not m:
+        return None, None
+    raw = re.sub(r"\s+", " ", m.group(1)).strip().rstrip(".")
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat(), raw
+        except ValueError:
+            continue
+    return None, raw
+
 
 def load_manifest() -> list[dict]:
     data = json.loads((RAW_CA_DIR / "manifest.json").read_text(encoding="utf-8"))
@@ -80,6 +102,7 @@ def parse_one(doc: dict) -> dict:
     pdf_path = RAW_CA_DIR / f"{doc['doc_id']}.pdf"
     pages = extract_pages(pdf_path)
     text = clean(pages)
+    date_issued, date_issued_raw = extract_date_issued(text)
     return {
         "doc_id": doc["doc_id"],
         "state": "CA",
@@ -88,6 +111,9 @@ def parse_one(doc: dict) -> dict:
         "title": doc.get("title"),
         "year": doc.get("year"),
         "source_url": doc.get("source_url"),
+        "date_issued": date_issued,
+        "date_issued_raw": date_issued_raw,
+        "date_effective": None,  # stated in prose; Phase 2 / manual
         "n_pages": len(pages),
         "n_chars": len(text),
         "status": "ok" if len(text) >= MIN_USEFUL_CHARS else "empty_or_scanned",
@@ -118,10 +144,13 @@ def main() -> None:
             rec["text"], encoding="utf-8"
         )
         summaries.append(
-            {k: rec[k] for k in ("doc_id", "n_pages", "n_chars", "status")}
+            {k: rec[k] for k in ("doc_id", "n_pages", "n_chars", "status", "date_issued")}
         )
         flag = "" if rec["status"] == "ok" else "  <-- CHECK"
-        print(f"  {rec['doc_id']:<26} {rec['n_pages']:>2}p  {rec['n_chars']:>7,} chars{flag}")
+        if rec["date_issued"] is None:
+            flag += f"  (no date; raw={rec['date_issued_raw']!r})"
+        d = rec["date_issued"] or "??????????"
+        print(f"  {rec['doc_id']:<26} {d}  {rec['n_pages']:>2}p  {rec['n_chars']:>7,} chars{flag}")
 
     envelope = {
         "source": "ca_doi_bulletins",
