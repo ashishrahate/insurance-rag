@@ -21,7 +21,7 @@ venv\Scripts\activate            # Windows
 pip install -r requirements.txt
 
 # 2. Ollama models
-ollama pull llama3.1:8b
+ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 
 # 3. Vector database
@@ -30,6 +30,19 @@ docker compose up -d             # Qdrant on localhost:6333
 # 4. Create the California collection + payload indexes
 python -m src.ingestion.bootstrap_collection
 ```
+
+## Daily workflow
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start.ps1   # Docker + Qdrant + Ollama + models, warmed
+venv\Scripts\activate
+# ... work ...
+powershell -ExecutionPolicy Bypass -File scripts\stop.ps1    # append docs/session-log.md, stop deps
+```
+
+`start.ps1` is idempotent and self-heals a stray container on port 6333.
+`stop.ps1 -Full` also quits the Docker Desktop and Ollama apps;
+`stop.ps1 -Note "..."` adds a one-line summary to the session log.
 
 ## Verify
 
