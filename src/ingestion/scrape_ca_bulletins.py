@@ -163,7 +163,14 @@ def main() -> None:
             time.sleep(REQUEST_DELAY_SEC)
 
     manifest = RAW_CA_DIR / "manifest.json"
-    manifest.write_text(json.dumps(records, indent=2), encoding="utf-8")
+    envelope = {
+        "source": "ca_doi_bulletins",
+        "listing_url": CA_BULLETINS_URL,
+        "scraped_at": datetime.now(timezone.utc).isoformat(),
+        "document_count": len(records),
+        "documents": records,
+    }
+    manifest.write_text(json.dumps(envelope, indent=2), encoding="utf-8")
     ok = sum(r["status"] in ("downloaded", "cached") for r in records)
     print(f"\n{ok}/{len(records)} available. Manifest: {manifest}")
 

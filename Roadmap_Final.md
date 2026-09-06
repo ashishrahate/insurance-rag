@@ -219,6 +219,19 @@ Query
 - Postgres feedback store replacing SQLite.
 - Cloud VM deployment.
 - Query rewriting / HyDE for recall.
+- **Document storage abstraction + object-store ingestion.** Replace direct
+  local-disk reads with a `Storage` interface (`exists` / `get_bytes` /
+  `put_bytes`): `LocalStorage` for dev, `S3Storage` (or GCS / Azure Blob) for
+  production. The manifest / catalog stores object **keys**, not absolute paths.
+  Once in place, raw documents can be dropped into a bucket by any external
+  process and the Phase 3 `/ingest` endpoint (or a bucket event / queue)
+  triggers parse -> chunk -> embed. Raw bytes are kept (not just the vectors)
+  for reprocessing, provenance / audit, citation serving, and parser debugging.
+- **Derived SQLite catalog.** Promote the per-folder `manifest.json` files to
+  `data/catalog.db` (one row per document, a column + timestamp per pipeline
+  stage: scraped / parsed / chunked / embedded, plus `content_hash`). Built by
+  scanning the manifests; the manifests stay as immutable per-scrape records.
+  Do this once a second state or multi-stage per-doc status tracking is needed.
 
 ---
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **greenfield learning project**, not an existing codebase. As of this writing `src/`, `ui/`, `config/`, `tests/`, and `data/` are empty scaffolding. The only Python is `test_pipeline.py` at the repo root — a partially-wired Phase 0 script whose embed-and-upsert steps are still commented out.
 
-**`RAG_Roadmap_Final.md` is the source of truth for what to build and in what order.** It supersedes `RAG_Project_Roadmap.md` and `RAG Roadmap update.md` (kept for history only). Read the final roadmap before starting work; follow its phase order and "done when" criteria.
+**`Roadmap_Final.md` is the source of truth for what to build and in what order.** It supersedes `RAG_Project_Roadmap.md` and `RAG Roadmap update.md` (kept for history only). Read the final roadmap before starting work; follow its phase order and "done when" criteria.
 
 ## How the user wants to work
 
