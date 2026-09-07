@@ -66,6 +66,12 @@ OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
 # --- Retrieval ---
 RETRIEVE_K = 3  # chunks passed to the LLM; small corpus rarely needs more
 
+# Reciprocal Rank Fusion damping constant (Change 2: BM25 + dense hybrid).
+# Standard value from the original RRF paper (Cormack et al., 2009). RRF only
+# uses rank position, not raw score, which is what lets us combine BM25 scores
+# and cosine scores -- two incomparable scales -- without calibration.
+RRF_K = 60
+
 # --- Evaluation (Phase 2) ---
 # Retrieval eval scores the top-EVAL_K distinct doc_ids per question. Kept equal
 # to RETRIEVE_K so the number measured is the number the app actually uses.
