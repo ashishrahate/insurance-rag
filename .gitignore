@@ -34,3 +34,6 @@ Thumbs.db
 
 # md files
 resume-star.md
+
+# Private post-drafting material (not project docs, kept local only)
+docs/linkedin-drafts/

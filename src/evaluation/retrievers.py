@@ -13,12 +13,16 @@ Strategies land one per Phase 2 change:
 """
 from collections.abc import Callable
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 from qdrant_client.models import ScoredPoint
 from rank_bm25 import BM25Okapi
 
-from config.settings import CA_COLLECTION, RRF_K
+from config.settings import CA_COLLECTION, RERANK_MODEL, RRF_K
 from src.retrieval.search import get_client, search
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 # A retriever returns [(doc_id, best_chunk_score), ...], length <= k, rank order.
 Retriever = Callable[[str, int], list[tuple[str, float]]]
@@ -93,6 +97,26 @@ def reciprocal_rank_fusion(*ranked_id_lists: list[str]) -> dict[str, float]:
     return scores
 
 
+def _hybrid_fused_chunks(query: str, limit: int) -> list[tuple[dict, float]]:
+    """Top `limit` chunk payloads from dense+BM25, RRF-fused, best first.
+
+    Returns full chunk payloads (not just ids) paired with their fused score,
+    because the reranker (unlike the plain hybrid retriever) needs the actual
+    `content` text of these chunks, not just which doc they belong to.
+    """
+    dense_points = search(query, state="CA", limit=limit)
+    dense_chunk_ids = [p.payload["chunk_id"] for p in dense_points]
+    bm25_chunk_ids = _bm25_ranked_chunk_ids(query, limit)
+
+    fused = reciprocal_rank_fusion(dense_chunk_ids, bm25_chunk_ids)
+
+    _, all_chunks = _bm25_corpus()  # already-cached; free after the first call
+    by_id = {c["chunk_id"]: c for c in all_chunks}
+
+    ranked_ids = sorted(fused, key=fused.get, reverse=True)[:limit]
+    return [(by_id[cid], fused[cid]) for cid in ranked_ids]
+
+
 def hybrid_retriever(query: str, k: int) -> list[tuple[str, float]]:
     """BM25 + dense, fused with RRF at chunk level, then deduped to k docs.
 
@@ -102,21 +126,50 @@ def hybrid_retriever(query: str, k: int) -> list[tuple[str, float]]:
     dense-only search misses on near-duplicate bulletins that share prose but
     differ in the specific terms/numbers BM25 is good at matching.
     """
-    dense_points = search(query, state="CA", limit=CANDIDATE_POOL)
-    dense_chunk_ids = [p.payload["chunk_id"] for p in dense_points]
-    bm25_chunk_ids = _bm25_ranked_chunk_ids(query, CANDIDATE_POOL)
+    fused_chunks = _hybrid_fused_chunks(query, CANDIDATE_POOL)
+    best_by_doc: dict[str, float] = {}
+    for chunk, score in fused_chunks:
+        doc_id = chunk["doc_id"]
+        if doc_id not in best_by_doc:
+            best_by_doc[doc_id] = score
+            if len(best_by_doc) >= k:
+                break
+    return list(best_by_doc.items())
 
-    fused = reciprocal_rank_fusion(dense_chunk_ids, bm25_chunk_ids)
 
-    # chunk_id -> doc_id, needed to dedup the fused ranking down to k docs.
-    _, all_chunks = _bm25_corpus()  # already-cached; free after the first call
-    id_to_doc = {c["chunk_id"]: c["doc_id"] for c in all_chunks}
+@lru_cache(maxsize=1)
+def _reranker() -> "CrossEncoder":
+    """Load bge-reranker-base once per process (a real model load, ~1-2s + the
+    one-time download). Same lazy-import-inside-the-function trick as
+    `sentence_transformers`/`torch` being a heavy, optional dependency only
+    this retriever needs -- the eval harness's other strategies never pay for
+    importing torch at all.
+    """
+    from sentence_transformers import CrossEncoder
+
+    return CrossEncoder(RERANK_MODEL)
+
+
+def hybrid_rerank_retriever(query: str, k: int) -> list[tuple[str, float]]:
+    """Hybrid's top-20 fused chunks, reranked by a cross-encoder, then deduped.
+
+    A cross-encoder jointly encodes (query, chunk) as one input and outputs a
+    single relevance score -- much more accurate than comparing two
+    independently-computed embeddings, but too expensive to run over the
+    whole corpus. So it only ever reorders a small candidate pool it cannot
+    expand: whatever didn't make hybrid's top 20 has no chance to be rescued
+    here (this is why hybrid had to be measured and fixed first, see Change 2).
+    """
+    fused_chunks = [chunk for chunk, _ in _hybrid_fused_chunks(query, CANDIDATE_POOL)]
+    pairs = [(query, chunk["content"]) for chunk in fused_chunks]
+    scores = _reranker().predict(pairs)
 
     best_by_doc: dict[str, float] = {}
-    for chunk_id in sorted(fused, key=fused.get, reverse=True):
-        doc_id = id_to_doc[chunk_id]
+    ranked = sorted(zip(fused_chunks, scores), key=lambda pair: pair[1], reverse=True)
+    for chunk, score in ranked:
+        doc_id = chunk["doc_id"]
         if doc_id not in best_by_doc:
-            best_by_doc[doc_id] = fused[chunk_id]
+            best_by_doc[doc_id] = float(score)
             if len(best_by_doc) >= k:
                 break
     return list(best_by_doc.items())
@@ -125,4 +178,5 @@ def hybrid_retriever(query: str, k: int) -> list[tuple[str, float]]:
 RETRIEVERS: dict[str, Retriever] = {
     "dense": dense_retriever,
     "hybrid": hybrid_retriever,
+    "hybrid_rerank": hybrid_rerank_retriever,
 }

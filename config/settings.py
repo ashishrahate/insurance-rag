@@ -24,9 +24,9 @@ CA_BULLETINS_URL = (
 HTTP_HEADERS = {"User-Agent": "insurance-rag-bot/0.1 (educational RAG project)"}
 REQUEST_DELAY_SEC = 1.0
 
-# --- Chunking (naive fixed-size; Phase 2 sweeps these) ---
-CHUNK_SIZE_WORDS = 300
-CHUNK_OVERLAP_WORDS = 50
+# --- Chunking (naive fixed-size; Phase 2 Change 4 sweeps these) ---
+CHUNK_SIZE_WORDS = int(os.getenv("CHUNK_SIZE_WORDS", "300"))
+CHUNK_OVERLAP_WORDS = int(os.getenv("CHUNK_OVERLAP_WORDS", "50"))
 
 # Header-aware chunking splits each bulletin into heading-keyed sections and
 # stamps every chunk with its heading path (`parent_headers`, a locked payload
@@ -71,6 +71,10 @@ RETRIEVE_K = 3  # chunks passed to the LLM; small corpus rarely needs more
 # uses rank position, not raw score, which is what lets us combine BM25 scores
 # and cosine scores -- two incomparable scales -- without calibration.
 RRF_K = 60
+
+# Cross-encoder reranker (Change 3). Runs locally via sentence-transformers;
+# ~2GB one-time download, ~1s/query on CPU for a 20-candidate pool.
+RERANK_MODEL = "BAAI/bge-reranker-base"
 
 # --- Evaluation (Phase 2) ---
 # Retrieval eval scores the top-EVAL_K distinct doc_ids per question. Kept equal

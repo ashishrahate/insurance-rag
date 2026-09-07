@@ -1,7 +1,15 @@
 # Current Pipeline — State Insurance Regulations Knowledge Assistant
 
-**Status:** end of Phase 1 (naive RAG, California only). No hybrid search, no
-reranker, no API, no UI, no score-threshold guardrail yet — those are Phases 2–5.
+**Status:** end of Phase 2 (retrieval quality, California only). Sections 3–7
+below describe the **online query path** (`src/ask.py`), which is still
+Phase 1's dense-only vector search — **unchanged on purpose.** Phase 2 built
+and measured hybrid search (BM25+RRF) and cross-encoder reranking as
+additional strategies in the *eval harness only*
+(`src/evaluation/retrievers.py`); wiring the winning strategy into the live
+query path is Phase 3 work (see its retrieval→answer flow diagram in
+`Roadmap_Final.md`). See `data/eval/results.md` for the measured numbers and
+`docs/scaling-notes.md` for what changes about this at production scale.
+No API, no UI, no score-threshold guardrail yet — those are Phases 3–5.
 
 This document describes **exactly what the code does today**, module by module.
 It is a snapshot; when a phase changes the flow, update this file.
@@ -330,8 +338,24 @@ flowchart TD
   `[250·i, 250·i + 300)`; the last 50 words of chunk *i* are the first 50 of
   chunk *i+1* (the overlap). Loop stops once a window reaches the end.
 - Consequence for this corpus (bulletins ≈ 230–1,900 words): most docs → **1
-  chunk**; the 5-page 2025-14 → several. Current total: **49 points from 18
-  docs**.
+  chunk**; the 5-page 2025-14 → several. Current total: **53 points from 18
+  docs** (up from 49 — see below).
+
+**Phase 2 update:** chunking is now **header-aware** by default
+(`src/ingestion/headers.py`), splitting each bulletin into heading-keyed
+sections (`RE:` topic, `I./II.` roman sections, `A./B.` lettered subsections)
+before the sliding window runs — each chunk's section headings populate the
+locked `parent_headers` payload field (no longer always `[]`). Whether that
+heading path is also *prepended to the embedded text* is a separate,
+measured, currently-off switch (`EMBED_WITH_HEADERS`, default `0`) — Change 1
+found prepending it hurt MRR (0.862 → 0.804) because the heading text is
+near-identical across this corpus's near-duplicate bulletins and dilutes the
+actual disambiguating signal. See `config/settings.py`'s comment on
+`EMBED_WITH_HEADERS` and `data/eval/results.md` rows 2–3. `--naive` on
+`chunk_and_index.py` reproduces the original flat, section-unaware chunking.
+
+A **chunk size/overlap sweep** ({200,300,500}×{0,25,50}, `src/evaluation/chunk_sweep.py`)
+confirmed 300/50 already ties for the best MRR — no change made.
 
 ### Idempotency & re-runs
 
@@ -527,34 +551,44 @@ answer_question(question, state="CA", k=RETRIEVE_K):   # RETRIEVE_K = 3
 | `data/processed/ca/<doc_id>.json` | Stage 2 | Stage 3 | metadata + full `text` |
 | `data/processed/ca/<doc_id>.txt` | Stage 2 | humans | cleaned text only |
 | `data/processed/ca/manifest.json` | Stage 2 | Stage 3 | envelope + `documents[]` (18) |
-| Qdrant `insurance_ca_v1` | Stage 3 | `search.py` | 49 points, 768-dim + 10-field payload |
-| `data/eval/` | — | Phase 2 | empty |
+| Qdrant `insurance_ca_v1` | Stage 3 | `search.py`, `evaluation/retrievers.py` | 53 points, 768-dim + 10-field payload (`parent_headers` now populated) |
+| `data/eval/ca_eval_set.json` | hand-written | `retrieval_eval.py` | 28 questions (23 in-scope + 5 out-of-scope), each with target `doc_id`(s) |
+| `data/eval/results.md` | `retrieval_eval.py` / `chunk_sweep.py` | humans | one row per measured configuration, append-only |
 
-Nothing in the query pipeline writes state. No cache, no logs, no request IDs
-(those arrive in Phase 3).
+Nothing in the *query* pipeline (§7) writes state. No cache, no logs beyond
+`log_run`, no request IDs (those arrive in Phase 3). The *eval* pipeline
+(`src/evaluation/`) is a separate, offline path — it queries Qdrant directly
+via named `RETRIEVERS` strategies (`dense`/`hybrid`/`hybrid_rerank`), never
+touches `src/ask.py`, and only writes to `data/eval/results.md`.
 
 ---
 
 ## 9. What is deliberately NOT here yet
 
-| Missing piece | Arrives in |
+| Missing piece | Status |
 |---|---|
-| Evaluation set + Hit@K / Recall@K / MRR measurement | Phase 2 |
-| Header-aware chunking (`parent_headers` populated) | Phase 2 |
-| BM25 sparse search + Reciprocal Rank Fusion | Phase 2 |
-| Cross-encoder reranking (`bge-reranker-base`) | Phase 2 |
-| Chunk size / overlap sweep | Phase 2 |
+| ~~Evaluation set + Hit@K / Recall@K / MRR measurement~~ | **done** — `data/eval/` |
+| ~~Header-aware chunking (`parent_headers` populated)~~ | **done** — kept structure, not embedded (see §6) |
+| ~~BM25 sparse search + Reciprocal Rank Fusion~~ | **done** — eval-harness only, see below |
+| ~~Cross-encoder reranking (`bge-reranker-base`)~~ | **done** — eval-harness only, see below |
+| ~~Chunk size / overlap sweep~~ | **done** — 300/50 confirmed as already-optimal |
+| **Wiring `hybrid_rerank` into the live query path** (`src/ask.py`) | Phase 3 — see its retrieval→answer flow diagram |
 | FastAPI service, Pydantic schema, correlation IDs, exact cache | Phase 3 |
-| **Score-threshold refusal guardrail** (replaces prompt-based refusal) | Phase 3 |
+| **Score-threshold refusal guardrail** (replaces prompt-based refusal) | Phase 3 — the reranker score separation Phase 2 measured (in-scope ~0.97 mean vs. out-of-scope ~0.10 mean) is the direct input |
 | OpenAI provider swap | Phase 3 / 5 |
 | Streamlit UI, citations, feedback → SQLite | Phase 4 |
 | LLM-as-judge (Faithfulness / Answer Relevance), Blue/Green alias swap | Phase 5 |
-| `date_effective` population | Phase 2 / manual |
+| `date_effective` population | still open — manual or a later phase |
 | Second state (NY or TX), cross-state filtering | Phase 6 |
+
+**Important:** "done" above means *measured in the eval harness*
+(`src/evaluation/retrievers.py`'s `hybrid`/`hybrid_rerank` strategies), not
+*live in the app*. `src/ask.py` still calls `search.py`'s dense-only
+`search()` — that's intentional per the roadmap's own phasing, not a gap.
 
 ---
 
-## 10. Known issues surfaced during Phase 1
+## 10. Known issues surfaced during Phase 1 (Phase 2 findings below)
 
 1. **Prompt-based refusal is unreliable.** A small model conflates "not stated
    verbatim" with "topic not covered" and over-refuses synthesis/comparison
@@ -568,6 +602,27 @@ Nothing in the query pipeline writes state. No cache, no logs, no request IDs
 4. **`date_effective` entirely null** — not extracted yet.
 5. **New `QdrantClient` per `search()` call** — fine at this scale, worth a
    shared client when the API lands.
+
+### Phase 2 findings
+
+6. **Header-aware chunking without care hurts retrieval.** Prepending each
+   chunk's heading path to the embedded text dropped MRR 0.862 → 0.804 — the
+   heading text (a `RE:` line) is itself near-duplicate boilerplate across
+   this corpus's near-clone bulletins, so it diluted rather than amplified
+   the real disambiguating signal. Kept the structural metadata
+   (`parent_headers`), reverted the embedding change. See
+   `config/settings.py`'s `EMBED_WITH_HEADERS` comment and
+   `data/eval/results.md`.
+7. **Bigger chunks trade ranking precision and OOS separation for recall.**
+   The chunk-size sweep found 500-word chunks pushed Recall@3 to 1.000 but
+   dropped MRR to 0.848–0.877 *and* collapsed the reranker's in-scope vs.
+   out-of-scope score gap — a real reason to prefer 300/50 even where a
+   bigger chunk size ties or wins on a single metric. See
+   `data/eval/results.md`'s sweep rows.
+8. **Every retrieval number measured so far assumes exact (brute-force)
+   vector search**, not Qdrant's approximate HNSW index — the collection is
+   far below the 10,000-vector `indexing_threshold`. See
+   `docs/scaling-notes.md` §5.
 6. **CPU-only LLM inference.** No Ollama-usable GPU (Intel Arc iGPU
    unsupported), so answers take tens of seconds. Mitigated with a small dev
    model (`llama3.2:3b`), `keep_alive=30m`, `num_predict=300`, and `k=3`. See
