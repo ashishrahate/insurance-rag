@@ -1,0 +1,499 @@
+{
+  "retriever": "hybrid_rerank",
+  "k": 3,
+  "aggregate": {
+    "hit_at_k": 0.9565217391304348,
+    "recall_at_k": 0.9130434782608695,
+    "mrr": 0.8840579710144928,
+    "n_in_scope": 23,
+    "n_out_of_scope": 5
+  },
+  "by_category": {
+    "comparison": {
+      "n": 5,
+      "hit_at_k": 1.0,
+      "recall_at_k": 0.8,
+      "mrr": 0.9
+    },
+    "single_doc_factual": {
+      "n": 14,
+      "hit_at_k": 1.0,
+      "recall_at_k": 1.0,
+      "mrr": 0.9642857142857143
+    },
+    "temporal_disambiguation": {
+      "n": 4,
+      "hit_at_k": 0.75,
+      "recall_at_k": 0.75,
+      "mrr": 0.5833333333333334
+    }
+  },
+  "in_scope_top_score": {
+    "min": 0.6928712129592896,
+    "mean": 0.965354014997897,
+    "max": 0.9997333884239197
+  },
+  "out_of_scope_top_score": {
+    "min": 0.0026229224167764187,
+    "mean": 0.09984613815322518,
+    "max": 0.2859794795513153
+  },
+  "per_question": [
+    {
+      "id": "q01",
+      "category": "single_doc_factual",
+      "question": "What is the Fiscal Year 2024-25 Life principle-based reserving annual aggregate assessment amount?",
+      "relevant": [
+        "CA_BULLETIN_2025_8"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_3"
+      ],
+      "top_score": 0.9957634210586548,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q02",
+      "category": "single_doc_factual",
+      "question": "Which California Insurance Code section authorizes the Long-Term Care principle-based reserving annual aggregate assessment?",
+      "relevant": [
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2025_8"
+      ],
+      "top_score": 0.9997333884239197,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.5
+    },
+    {
+      "id": "q03",
+      "category": "single_doc_factual",
+      "question": "During a declared state of emergency, what is the minimum number of days an insurer must give an insured to submit proof of loss?",
+      "relevant": [
+        "CA_BULLETIN_2026_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2026_6",
+        "CA_BULLETIN_2025_12"
+      ],
+      "top_score": 0.9986652135848999,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q04",
+      "category": "single_doc_factual",
+      "question": "Which Senate Bill amended Insurance Code section 2051.5 to extend the proof of loss deadline during a state of emergency?",
+      "relevant": [
+        "CA_BULLETIN_2026_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2025_15",
+        "CA_BULLETIN_2026_6"
+      ],
+      "top_score": 0.9996570348739624,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q05",
+      "category": "single_doc_factual",
+      "question": "Under Assembly Bill 144, within how many business days must a health insurer begin covering a newly recommended CDPH immunization?",
+      "relevant": [
+        "CA_BULLETIN_2025_14"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_14",
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2025_7"
+      ],
+      "top_score": 0.999581515789032,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q06",
+      "category": "single_doc_factual",
+      "question": "What coverage category was added to the California Export List in 2025?",
+      "relevant": [
+        "CA_BULLETIN_2025_16"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_16",
+        "CA_BULLETIN_2025_7",
+        "CA_BULLETIN_2025_14"
+      ],
+      "top_score": 0.8666284680366516,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q07",
+      "category": "single_doc_factual",
+      "question": "What is the adjusted minimum net worth amount for the commercial insured exemption effective January 1, 2025?",
+      "relevant": [
+        "CA_BULLETIN_2025_10"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_10",
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2025_14"
+      ],
+      "top_score": 0.9926022887229919,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q08",
+      "category": "single_doc_factual",
+      "question": "What did the California Supreme Court decision in Another Planet establish about coverage for smoke damage claims?",
+      "relevant": [
+        "CA_BULLETIN_2025_7"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_7",
+        "CA_BULLETIN_2026_6",
+        "CA_BULLETIN_2025_16"
+      ],
+      "top_score": 0.9990445971488953,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q09",
+      "category": "single_doc_factual",
+      "question": "What does Senate Bill 805, the No Vigilantes Act, prohibit bail fugitive recovery agents from doing?",
+      "relevant": [
+        "CA_BULLETIN_2025_15"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_15",
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2026_6"
+      ],
+      "top_score": 0.9983758926391602,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q10",
+      "category": "single_doc_factual",
+      "question": "Which wildfire led to the mandatory moratorium covering Mono County in December 2025?",
+      "relevant": [
+        "CA_BULLETIN_2025_17"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_17",
+        "CA_BULLETIN_2026_1",
+        "CA_BULLETIN_2026_6"
+      ],
+      "top_score": 0.6928712129592896,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q11",
+      "category": "single_doc_factual",
+      "question": "What five-year CPI-U percentage change was used for the 2025 commercial insured exemption adjustment?",
+      "relevant": [
+        "CA_BULLETIN_2025_10"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_10",
+        "CA_BULLETIN_2025_14",
+        "CA_BULLETIN_2026_5"
+      ],
+      "top_score": 0.9920824766159058,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q12",
+      "category": "single_doc_factual",
+      "question": "According to Bulletin 2025-11, which rate arrangements likely violate the prior approval provisions of Proposition 103?",
+      "relevant": [
+        "CA_BULLETIN_2025_11"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2026_2",
+        "CA_BULLETIN_2026_5"
+      ],
+      "top_score": 0.9992746710777283,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q13",
+      "category": "single_doc_factual",
+      "question": "Which bulletin extends the wildfire cancellation and non-renewal moratorium to commercial property insurance, and which statute authorizes that extension?",
+      "relevant": [
+        "CA_BULLETIN_2026_6"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_6",
+        "CA_BULLETIN_2025_17",
+        "CA_BULLETIN_2025_13"
+      ],
+      "top_score": 0.9933566451072693,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q14",
+      "category": "single_doc_factual",
+      "question": "What is the FY 2024-25 Long-Term Care PBR annual aggregate assessment amount?",
+      "relevant": [
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_8"
+      ],
+      "top_score": 0.9974377155303955,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q15",
+      "category": "comparison",
+      "question": "What is the difference between the Life and the Long-Term Care principle-based reserving annual aggregate assessments for FY 2024-25?",
+      "relevant": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_4"
+      ],
+      "top_score": 0.9289566874504089,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q16",
+      "category": "comparison",
+      "question": "How did the Life principle-based reserving annual aggregate assessment change from FY 2024-25 to FY 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2025_9"
+      ],
+      "top_score": 0.9513511061668396,
+      "hit": 1.0,
+      "recall": 0.5,
+      "rr": 0.5
+    },
+    {
+      "id": "q17",
+      "category": "comparison",
+      "question": "How did the Long-Term Care principle-based reserving annual aggregate assessment change from FY 2024-25 to FY 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_4"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2025_9"
+      ],
+      "top_score": 0.9769448041915894,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q18",
+      "category": "comparison",
+      "question": "Bulletin 2025-11 and Bulletin 2026-2 both concern Proposition 103 rate compliance - what distinct violation does each address?",
+      "relevant": [
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2026_2"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2026_2",
+        "CA_BULLETIN_2026_5"
+      ],
+      "top_score": 0.9560711979866028,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q19",
+      "category": "comparison",
+      "question": "Which Insurance Code sections authorize the Life assessment versus the Long-Term Care assessment under principle-based reserving?",
+      "relevant": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2026_4"
+      ],
+      "top_score": 0.9893028140068054,
+      "hit": 1.0,
+      "recall": 0.5,
+      "rr": 1.0
+    },
+    {
+      "id": "q20",
+      "category": "temporal_disambiguation",
+      "question": "What is the Life principle-based reserving annual aggregate assessment for fiscal year 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2026_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_8"
+      ],
+      "top_score": 0.9919576644897461,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q21",
+      "category": "temporal_disambiguation",
+      "question": "Which moratorium bulletin concerns the Franklin Fire, and on what date was that state of emergency declared?",
+      "relevant": [
+        "CA_BULLETIN_2025_12"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_12",
+        "CA_BULLETIN_2025_17",
+        "CA_BULLETIN_2026_6"
+      ],
+      "top_score": 0.9838019609451294,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "q22",
+      "category": "temporal_disambiguation",
+      "question": "In the Long-Term Care principle-based reserving bulletin issued in May 2025, what was the aggregate assessment amount?",
+      "relevant": [
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2025_9"
+      ],
+      "top_score": 0.9654072523117065,
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.3333333333333333
+    },
+    {
+      "id": "q23",
+      "category": "temporal_disambiguation",
+      "question": "Which 2026 bulletin addresses the wildfire moratorium for the Gifford Fire?",
+      "relevant": [
+        "CA_BULLETIN_2026_1"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_6",
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2026_2"
+      ],
+      "top_score": 0.9342743158340454,
+      "hit": 0.0,
+      "recall": 0.0,
+      "rr": 0.0
+    },
+    {
+      "id": "q24",
+      "category": "out_of_scope",
+      "question": "What are New York's requirements for personal auto insurance rate filings?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2026_2",
+        "CA_BULLETIN_2025_10"
+      ],
+      "top_score": 0.012086491100490093
+    },
+    {
+      "id": "q25",
+      "category": "out_of_scope",
+      "question": "How does a beneficiary file a life insurance death benefit claim in California?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2026_2",
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2025_16"
+      ],
+      "top_score": 0.0026229224167764187
+    },
+    {
+      "id": "q26",
+      "category": "out_of_scope",
+      "question": "What is the minimum paid-in capital required to license a new property and casualty insurer in California?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2026_2",
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2026_5"
+      ],
+      "top_score": 0.1851075142621994
+    },
+    {
+      "id": "q27",
+      "category": "out_of_scope",
+      "question": "Does California law require earthquake coverage to be offered to homeowners insurance policyholders?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2025_16",
+        "CA_BULLETIN_2025_7",
+        "CA_BULLETIN_2026_5"
+      ],
+      "top_score": 0.2859794795513153
+    },
+    {
+      "id": "q28",
+      "category": "out_of_scope",
+      "question": "What are the continuing education requirements for a licensed California insurance producer?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2025_16",
+        "CA_BULLETIN_2025_14",
+        "CA_BULLETIN_2026_2"
+      ],
+      "top_score": 0.013434283435344696
+    }
+  ]
+}

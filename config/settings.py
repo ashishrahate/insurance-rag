@@ -52,6 +52,13 @@ CA_COLLECTION_ALIAS = "insurance_ca_live"
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 EMBED_DIM = 768  # nomic-embed-text output dimensionality
 
+# --- Provider abstraction (Phase 3) ---
+# Selects the backend behind src/providers/get_provider(). Only "ollama" is
+# implemented; "openai" lands in Phase 5 as a new class + this one flag flip,
+# not a rewrite of embed.py/generate.py (both already call through the
+# provider interface).
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+
 # --- LLM (Ollama) ---
 # Dev model is deliberately small: this machine has no Ollama-usable GPU, so
 # inference is 100% CPU. Phase 1 only needs the pipeline to work; real answer
@@ -75,6 +82,17 @@ RRF_K = 60
 # Cross-encoder reranker (Change 3). Runs locally via sentence-transformers;
 # ~2GB one-time download, ~1s/query on CPU for a 20-candidate pool.
 RERANK_MODEL = "BAAI/bge-reranker-base"
+
+# Refusal guardrail (Phase 3). Below this hybrid_rerank top-1 score, skip the
+# LLM call entirely and return a structured refusal. Derived from
+# data/eval/hybrid_rerank_scores.json (28-question eval set, see
+# `retrieval_eval.py --dump-json`): in-scope top1 scores ranged
+# [0.693, 1.000], out-of-scope top1 scores ranged [0.003, 0.286] -- a clean,
+# non-overlapping gap. 0.5 sits at that gap's midpoint (~0.2 margin either
+# side). Not a calibrated probability -- bge-reranker-base emits uncalibrated
+# logits (see CLAUDE.md) -- and tuned on only 28 questions; revisit as the
+# eval set grows.
+REFUSAL_SCORE_CUTOFF = float(os.getenv("REFUSAL_SCORE_CUTOFF", "0.5"))
 
 # --- Evaluation (Phase 2) ---
 # Retrieval eval scores the top-EVAL_K distinct doc_ids per question. Kept equal

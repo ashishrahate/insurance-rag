@@ -14,6 +14,14 @@ SYSTEM_PROMPT = (
     "- Be concise and specific. Quote regulatory language when it matters."
 )
 
+# Used only by the API path (Phase 3, `json_mode=True`) -- same grounding
+# rules as SYSTEM_PROMPT, output shape constrained for Pydantic validation
+# instead of the CLI's free-text answer.
+JSON_SYSTEM_PROMPT = SYSTEM_PROMPT + (
+    "\n- Respond with ONLY a JSON object of the exact shape "
+    '{"answer": "<your answer as a string>"}, no other text, no markdown fences.'
+)
+
 
 def format_context(hits: list[ScoredPoint]) -> str:
     blocks = []
@@ -28,12 +36,15 @@ def format_context(hits: list[ScoredPoint]) -> str:
     return "\n\n".join(blocks)
 
 
-def build_messages(question: str, hits: list[ScoredPoint]) -> list[dict]:
+def build_messages(
+    question: str, hits: list[ScoredPoint], json_mode: bool = False
+) -> list[dict]:
     user = (
         f"Context passages:\n\n{format_context(hits)}\n\n"
         f"Question: {question}"
     )
+    system = JSON_SYSTEM_PROMPT if json_mode else SYSTEM_PROMPT
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system},
         {"role": "user", "content": user},
     ]

@@ -26,6 +26,7 @@ import argparse
 import json
 import statistics
 from datetime import datetime, timezone
+from pathlib import Path
 
 from config.settings import (
     CHUNK_OVERLAP_WORDS,
@@ -201,10 +202,19 @@ def main() -> None:
                     help="print the per-question hit/miss breakdown")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the report but do not touch results.md")
+    ap.add_argument("--dump-json", metavar="PATH",
+                    help="write the full report (incl. per-question top_score) "
+                         "to PATH, e.g. for guardrail threshold analysis (Phase 3)")
     args = ap.parse_args()
 
     report = evaluate(args.retriever, args.k)
     print_report(report, args.show_questions)
+
+    if args.dump_json:
+        Path(args.dump_json).write_text(
+            json.dumps(report, indent=2, default=str), encoding="utf-8"
+        )
+        print(f"dumped full report to {args.dump_json}")
 
     label = args.label or f"{args.retriever} (unlabelled)"
     if not args.dry_run:

@@ -1,15 +1,30 @@
 # Current Pipeline — State Insurance Regulations Knowledge Assistant
 
-**Status:** end of Phase 2 (retrieval quality, California only). Sections 3–7
-below describe the **online query path** (`src/ask.py`), which is still
-Phase 1's dense-only vector search — **unchanged on purpose.** Phase 2 built
-and measured hybrid search (BM25+RRF) and cross-encoder reranking as
-additional strategies in the *eval harness only*
-(`src/evaluation/retrievers.py`); wiring the winning strategy into the live
-query path is Phase 3 work (see its retrieval→answer flow diagram in
-`Roadmap_Final.md`). See `data/eval/results.md` for the measured numbers and
-`docs/scaling-notes.md` for what changes about this at production scale.
-No API, no UI, no score-threshold guardrail yet — those are Phases 3–5.
+**Status:** end of Phase 3 (production API, guardrails & caching, California
+only). **Sections 3–7 below are now STALE** — they describe Phase 1's
+dense-only query path (`src/ask.py` → `search.py`). As of Phase 3:
+
+- Production retrieval is `src/retrieval/hybrid.py::retrieve_chunks()` —
+  BM25+dense fused via RRF, reranked by `bge-reranker-base`, wired into both
+  `src/ask.py` (CLI) and the new `src/api/main.py` (FastAPI service).
+- A score-threshold refusal guardrail (`REFUSAL_SCORE_CUTOFF=0.5`, derived
+  from `data/eval/hybrid_rerank_scores.json`) skips the LLM call entirely on
+  out-of-scope questions.
+- `src/providers/` abstracts the LLM/embedding backend (`OllamaProvider` only
+  for now; `OpenAIProvider` is Phase 5).
+- `src/api/main.py` exposes `/query`, `/ingest`, `/healthcheck`, `/feedback`
+  with an exact-query cache, correlation IDs, and structured error handling
+  (all verified against real local Qdrant/Ollama, including an actual
+  Qdrant-outage test, not a simulated one).
+- `tests/` holds integration tests (`pytest tests/`) against real local infra.
+
+Sections 3–7's *module-by-module* detail (parsing, chunking mechanics) is
+still accurate for the offline ingestion pipeline. **The query-path sections
+need a full rewrite for Phase 3's flow** — not done in this pass; treat the
+sequence diagram in §7 as Phase 1 history until that rewrite happens.
+See `data/eval/results.md` / `hybrid_rerank_scores.json` for the numbers
+behind these decisions, and `docs/scaling-notes.md` for what changes at
+production scale (in-memory cache, process-lifetime singletons, etc.).
 
 This document describes **exactly what the code does today**, module by module.
 It is a snapshot; when a phase changes the flow, update this file.
@@ -572,19 +587,24 @@ touches `src/ask.py`, and only writes to `data/eval/results.md`.
 | ~~BM25 sparse search + Reciprocal Rank Fusion~~ | **done** — eval-harness only, see below |
 | ~~Cross-encoder reranking (`bge-reranker-base`)~~ | **done** — eval-harness only, see below |
 | ~~Chunk size / overlap sweep~~ | **done** — 300/50 confirmed as already-optimal |
-| **Wiring `hybrid_rerank` into the live query path** (`src/ask.py`) | Phase 3 — see its retrieval→answer flow diagram |
-| FastAPI service, Pydantic schema, correlation IDs, exact cache | Phase 3 |
-| **Score-threshold refusal guardrail** (replaces prompt-based refusal) | Phase 3 — the reranker score separation Phase 2 measured (in-scope ~0.97 mean vs. out-of-scope ~0.10 mean) is the direct input |
-| OpenAI provider swap | Phase 3 / 5 |
+| ~~Wiring `hybrid_rerank` into the live query path~~ | **done** — `src/retrieval/hybrid.py::retrieve_chunks()`, used by both `src/ask.py` and `src/api/main.py` |
+| ~~FastAPI service, Pydantic schema, correlation IDs, exact cache~~ | **done** — `src/api/` |
+| ~~Score-threshold refusal guardrail~~ | **done** — `REFUSAL_SCORE_CUTOFF=0.5`, `config/settings.py` |
+| ~~Provider abstraction~~ | **done** (Ollama only) — `src/providers/`. OpenAI concrete implementation deferred |
+| OpenAI provider swap | Phase 5 |
 | Streamlit UI, citations, feedback → SQLite | Phase 4 |
 | LLM-as-judge (Faithfulness / Answer Relevance), Blue/Green alias swap | Phase 5 |
 | `date_effective` population | still open — manual or a later phase |
 | Second state (NY or TX), cross-state filtering | Phase 6 |
 
-**Important:** "done" above means *measured in the eval harness*
-(`src/evaluation/retrievers.py`'s `hybrid`/`hybrid_rerank` strategies), not
-*live in the app*. `src/ask.py` still calls `search.py`'s dense-only
-`search()` — that's intentional per the roadmap's own phasing, not a gap.
+**Phase 3 scope notes:** `/ingest` re-indexes already-scraped-and-parsed docs
+only (scraping/parsing remain offline CLI steps). Integration tests
+(`tests/`) run against real local Qdrant+Ollama, not mocks — one exception:
+the Qdrant-unreachable test uses `monkeypatch` rather than actually stopping
+the shared dev container mid-suite (verified manually once, separately, by
+actually stopping/restarting Qdrant — see session history). Cache/BM25/reranker
+staleness on re-index is a known, accepted limitation at this scale — see
+`docs/scaling-notes.md` §3/§8.
 
 ---
 

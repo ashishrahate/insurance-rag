@@ -137,6 +137,69 @@ def delete_doc_points(client, doc_id: str) -> None:
     )
 
 
+def reindex(
+    only: str | None = None, dry_run: bool = False, header_aware: bool = True
+) -> dict:
+    """Re-chunk, re-embed, and re-upsert already-processed docs. Used by both
+    the CLI (`main`, below) and the `/ingest` API endpoint (Phase 3) -- one
+    implementation, so they can't drift.
+
+    Returns a summary dict (n_docs, n_chunks, points_count, ...) instead of
+    printing, so callers (the API included) can turn it into whatever
+    response shape they need.
+    """
+    sw = Stopwatch()
+    docs = load_docs(only)
+    client = get_client()
+
+    if not dry_run and not only:
+        delete_doc_points(client, SMOKE_TEST_DOC_ID)  # clear the Phase 0 leftover
+
+    per_doc = []
+    total_chunks = 0
+    for doc in docs:
+        chunks = chunk_document(doc, CHUNK_SIZE_WORDS, CHUNK_OVERLAP_WORDS, header_aware)
+        total_chunks += len(chunks)
+        per_doc.append({
+            "doc_id": doc["doc_id"],
+            "n_words": len(doc["text"].split()),
+            "n_chunks": len(chunks),
+            "n_sections": len({tuple(c["parent_headers"]) for c in chunks}),
+        })
+        if dry_run or not chunks:
+            continue
+        points = build_points(doc, chunks, sw=sw)
+        with sw.stage("upsert"):
+            delete_doc_points(client, doc["doc_id"])
+            client.upsert(collection_name=CA_COLLECTION, points=points)
+
+    summary = {
+        "header_aware": header_aware,
+        "chunk_size_words": CHUNK_SIZE_WORDS,
+        "chunk_overlap_words": CHUNK_OVERLAP_WORDS,
+        "n_docs": len(docs),
+        "n_chunks": total_chunks,
+        "per_doc": per_doc,
+        "dry_run": dry_run,
+    }
+    if not dry_run:
+        info = client.get_collection(CA_COLLECTION)
+        summary["points_count"] = info.points_count
+        summary.update(sw.snapshot())
+        embed_ms = summary.get("embed_ms", 0.0)
+        summary["chunks_per_s"] = (
+            round(total_chunks / (embed_ms / 1000), 2) if embed_ms else None
+        )
+        log_run({
+            "op": "index",
+            "correlation_id": new_correlation_id(),
+            "status": "ok",
+            "embed_model": EMBED_MODEL,
+            **{k: v for k, v in summary.items() if k != "per_doc"},
+        })
+    return summary
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--only", help="index just this doc_id")
@@ -147,55 +210,22 @@ def main() -> None:
     args = ap.parse_args()
     header_aware = not args.naive
 
-    sw = Stopwatch()
-    docs = load_docs(args.only)
-    client = get_client()
-
-    if not args.dry_run and not args.only:
-        delete_doc_points(client, SMOKE_TEST_DOC_ID)  # clear the Phase 0 leftover
-
     mode = "header-aware" if header_aware else "naive"
     print(f"chunking mode: {mode}  ({CHUNK_SIZE_WORDS}w / {CHUNK_OVERLAP_WORDS} overlap)\n")
 
-    total_chunks = 0
-    for doc in docs:
-        chunks = chunk_document(doc, CHUNK_SIZE_WORDS, CHUNK_OVERLAP_WORDS, header_aware)
-        total_chunks += len(chunks)
-        n_words = len(doc["text"].split())
-        n_sections = len({tuple(c["parent_headers"]) for c in chunks})
-        print(f"  {doc['doc_id']:<26} {n_words:>4}w -> {len(chunks)} chunk(s)"
-              f" in {n_sections} section(s)")
-        if args.dry_run or not chunks:
-            continue
-        points = build_points(doc, chunks, sw=sw)
-        with sw.stage("upsert"):
-            delete_doc_points(client, doc["doc_id"])
-            client.upsert(collection_name=CA_COLLECTION, points=points)
+    summary = reindex(only=args.only, dry_run=args.dry_run, header_aware=header_aware)
+
+    for d in summary["per_doc"]:
+        print(f"  {d['doc_id']:<26} {d['n_words']:>4}w -> {d['n_chunks']} chunk(s)"
+              f" in {d['n_sections']} section(s)")
 
     tail = "(dry run)" if args.dry_run else f"upserted into '{CA_COLLECTION}'"
-    print(f"\n{len(docs)} docs -> {total_chunks} chunks {tail}")
+    print(f"\n{summary['n_docs']} docs -> {summary['n_chunks']} chunks {tail}")
     if not args.dry_run:
-        info = client.get_collection(CA_COLLECTION)
-        print(f"'{CA_COLLECTION}' now holds {info.points_count} points")
-
-        snap = sw.snapshot()
-        embed_ms = snap.get("embed_ms", 0.0)
-        chunks_per_s = round(total_chunks / (embed_ms / 1000), 2) if embed_ms else None
-        print(f"  embed {embed_ms:,.0f}ms  upsert {snap.get('upsert_ms', 0):,.0f}ms"
-              f"  ({chunks_per_s} chunks/s)")
-        log_run({
-            "op": "index",
-            "correlation_id": new_correlation_id(),
-            "status": "ok",
-            "embed_model": EMBED_MODEL,
-            "n_docs": len(docs),
-            "n_chunks": total_chunks,
-            "chunk_size_words": CHUNK_SIZE_WORDS,
-            "chunk_overlap_words": CHUNK_OVERLAP_WORDS,
-            "header_aware": header_aware,
-            "chunks_per_s": chunks_per_s,
-            **snap,
-        })
+        print(f"'{CA_COLLECTION}' now holds {summary['points_count']} points")
+        print(f"  embed {summary.get('embed_ms', 0):,.0f}ms  "
+              f"upsert {summary.get('upsert_ms', 0):,.0f}ms  "
+              f"({summary['chunks_per_s']} chunks/s)")
 
 
 if __name__ == "__main__":
