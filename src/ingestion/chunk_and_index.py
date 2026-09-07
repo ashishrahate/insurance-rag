@@ -33,6 +33,7 @@ from config.settings import (
     PROCESSED_CA_DIR,
 )
 from src.ingestion.embed import embed_batch
+from src.ingestion.headers import format_for_embedding, split_into_sections
 from src.observability.logger import log_run, new_correlation_id
 from src.observability.timing import Stopwatch
 from src.retrieval.search import get_client
@@ -68,12 +69,39 @@ def chunk_words(text: str, size: int, overlap: int) -> list[str]:
     return chunks
 
 
-def build_points(doc: dict, chunks: list[str], sw: Stopwatch | None = None) -> list[PointStruct]:
+def chunk_document(
+    doc: dict, size: int, overlap: int, header_aware: bool
+) -> list[dict]:
+    """Split one document into chunks, each tagged with its heading path.
+
+    Naive mode: one flat sliding window over the whole text, parent_headers=[].
+    Header-aware mode: split into heading-keyed sections first, run the same
+    sliding window *within* each section, and stamp every chunk with that
+    section's headers.
+    """
+    if not header_aware:
+        return [
+            {"content": c, "parent_headers": []}
+            for c in chunk_words(doc["text"], size, overlap)
+        ]
+
+    out: list[dict] = []
+    for section in split_into_sections(doc["text"]):
+        for c in chunk_words(section.body, size, overlap):
+            out.append({"content": c, "parent_headers": section.headers})
+    return out
+
+
+def build_points(doc: dict, chunks: list[dict], sw: Stopwatch | None = None) -> list[PointStruct]:
+    # Embed the heading path + chunk; store the chunk text raw.
+    embed_inputs = [
+        format_for_embedding(c["parent_headers"], c["content"]) for c in chunks
+    ]
     if sw is not None:
         with sw.stage("embed"):
-            vectors = embed_batch(chunks)
+            vectors = embed_batch(embed_inputs)
     else:
-        vectors = embed_batch(chunks)
+        vectors = embed_batch(embed_inputs)
     points = []
     for i, (chunk, vec) in enumerate(zip(chunks, vectors)):
         chunk_id = f"{doc['doc_id']}_c{i}"
@@ -89,9 +117,9 @@ def build_points(doc: dict, chunks: list[str], sw: Stopwatch | None = None) -> l
                     "date_issued": doc.get("date_issued"),
                     "date_effective": doc.get("date_effective"),
                     "source_url": doc["source_url"],
-                    "parent_headers": [],
+                    "parent_headers": chunk["parent_headers"],
                     "chunk_id": chunk_id,
-                    "content": chunk,
+                    "content": chunk["content"],
                 },
             )
         )
@@ -113,7 +141,11 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--only", help="index just this doc_id")
     ap.add_argument("--dry-run", action="store_true", help="show chunk counts, write nothing")
+    ap.add_argument("--naive", action="store_true",
+                    help="disable header-aware chunking (flat sliding window, "
+                         "parent_headers=[]) -- reproduces the Phase 1 baseline")
     args = ap.parse_args()
+    header_aware = not args.naive
 
     sw = Stopwatch()
     docs = load_docs(args.only)
@@ -122,12 +154,17 @@ def main() -> None:
     if not args.dry_run and not args.only:
         delete_doc_points(client, SMOKE_TEST_DOC_ID)  # clear the Phase 0 leftover
 
+    mode = "header-aware" if header_aware else "naive"
+    print(f"chunking mode: {mode}  ({CHUNK_SIZE_WORDS}w / {CHUNK_OVERLAP_WORDS} overlap)\n")
+
     total_chunks = 0
     for doc in docs:
-        chunks = chunk_words(doc["text"], CHUNK_SIZE_WORDS, CHUNK_OVERLAP_WORDS)
+        chunks = chunk_document(doc, CHUNK_SIZE_WORDS, CHUNK_OVERLAP_WORDS, header_aware)
         total_chunks += len(chunks)
         n_words = len(doc["text"].split())
-        print(f"  {doc['doc_id']:<26} {n_words:>4}w -> {len(chunks)} chunk(s)")
+        n_sections = len({tuple(c["parent_headers"]) for c in chunks})
+        print(f"  {doc['doc_id']:<26} {n_words:>4}w -> {len(chunks)} chunk(s)"
+              f" in {n_sections} section(s)")
         if args.dry_run or not chunks:
             continue
         points = build_points(doc, chunks, sw=sw)
@@ -155,6 +192,7 @@ def main() -> None:
             "n_chunks": total_chunks,
             "chunk_size_words": CHUNK_SIZE_WORDS,
             "chunk_overlap_words": CHUNK_OVERLAP_WORDS,
+            "header_aware": header_aware,
             "chunks_per_s": chunks_per_s,
             **snap,
         })

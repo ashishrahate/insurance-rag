@@ -28,6 +28,18 @@ REQUEST_DELAY_SEC = 1.0
 CHUNK_SIZE_WORDS = 300
 CHUNK_OVERLAP_WORDS = 50
 
+# Header-aware chunking splits each bulletin into heading-keyed sections and
+# stamps every chunk with its heading path (`parent_headers`, a locked payload
+# field used later for citations). Whether that heading path is also PREPENDED
+# to the text we embed is a separate switch:
+#   Phase 2 Change 1 measured it -> net negative on the CA corpus. The doc-level
+#   "RE:" line is identical boilerplate across the near-duplicate pairs (Life vs
+#   LTC PBR, the 6 moratorium clones), so prepending it dilutes the body signal
+#   (fiscal year, dollar amounts) that was doing the disambiguation:
+#   MRR 0.862 -> 0.804, Recall@3 0.957 -> 0.913. See Challenges & Learnings #5.
+# So: keep the sections + populate parent_headers, but embed raw chunk text.
+EMBED_WITH_HEADERS = os.getenv("EMBED_WITH_HEADERS", "0").lower() not in ("0", "false", "no")
+
 # --- Qdrant ---
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
@@ -53,6 +65,13 @@ OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m")
 
 # --- Retrieval ---
 RETRIEVE_K = 3  # chunks passed to the LLM; small corpus rarely needs more
+
+# --- Evaluation (Phase 2) ---
+# Retrieval eval scores the top-EVAL_K distinct doc_ids per question. Kept equal
+# to RETRIEVE_K so the number measured is the number the app actually uses.
+EVAL_SET_FILE = EVAL_DIR / "ca_eval_set.json"
+EVAL_RESULTS_FILE = EVAL_DIR / "results.md"
+EVAL_K = 3
 
 # --- Observability ---
 # Structured run records land in logs/runs.jsonl, one JSON line per query.

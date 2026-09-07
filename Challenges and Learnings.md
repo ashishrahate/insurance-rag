@@ -10,6 +10,8 @@ Each entry: **Symptom → Root cause → Learning → Best solution → Applied 
 1. An in-corpus question returned a refusal *and still printed citations* — Phase 1
 2. Local LLM answers take 1–2 min per question — Phase 1
 3. A fixed ~290 ms client-construction cost hid behind the LLM bottleneck — Phase 1 / 2
+4. The naive retrieval baseline scored high — what that does and doesn't tell us — Phase 2
+5. Header-aware chunking made retrieval *worse* on this corpus — Phase 2 (Change 1)
 
 ---
 
@@ -272,3 +274,164 @@ Measured (median of 8 constructions):
 - ✅ Verified: 5 searches in one process → **1,450 ms → 208 ms** of client setup;
   single CLI query → 290 ms → 177 ms
 - ⏳ FastAPI lifespan singleton — Phase 3
+
+---
+
+## 4. The naive retrieval baseline scored high — what that does and doesn't tell us
+
+**Phase:** 2 (retrieval quality)
+
+### Symptom
+
+The first `retrieval_eval.py` run — dense-only vector search, naive 300/50
+chunking, no header awareness, no hybrid, no rerank — scored:
+
+| Hit@3 | Recall@3 | MRR | in-scope top-1 (mean) | out-of-scope top-1 (mean) |
+|---|---|---|---|---|
+| 0.957 | 0.957 | 0.862 | 0.750 | 0.705 |
+
+23 in-scope + 5 out-of-scope questions, `data/eval/ca_eval_set.json`. Only one
+outright miss. A first reaction of "retrieval is basically solved, Phase 2 has
+no headroom" would be the wrong reading.
+
+### Root cause / why the number is inflated
+
+1. **The corpus is tiny (18 docs, 49 chunks)** and most questions are
+   lexically distinct from the other 17 bulletins ("bail fugitive recovery
+   agents", "export list", "proof of loss"). Nearest-neighbour on 768-dim
+   embeddings barely has to discriminate. Hit@**3** over 18 docs is a low bar —
+   there is almost no room for the metric to fall.
+2. **Hit@K and Recall@K are pass/fail at depth K.** They reward "the right doc
+   is somewhere in the top 3" and say nothing about rank-1 correctness or about
+   how close the wrong answers came. They look saturated here because the easy
+   majority of the set drags the mean up.
+
+### Learning — three things the baseline actually tells us
+
+1. **Hit@3 is near-ceilinged (0.957); the signal is in MRR and in the score
+   gap.** On this corpus, track **MRR** (0.862 — rank-1 correctness, real
+   headroom) and the **in-scope vs out-of-scope top-1 score separation**, not
+   Hit@3. Report Hit@3 for continuity but do not optimise against it.
+2. **The one hard miss is the near-duplicate failure mode, on cue.** Q13
+   ("which bulletin extends the moratorium to *commercial* property") returned
+   three wildfire-ZIP moratorium bulletins instead of `CA_BULLETIN_2026_6`.
+   `2026_6` shares ~90% of its text (the SB 824 moratorium boilerplate) with
+   five siblings; the distinguishing content — "commercial property", "SB 547",
+   "§ 675.55" — is a thin slice, so the whole-doc embedding sits in the same
+   neighbourhood as its near-duplicates. This is exactly the class
+   header-aware chunking, BM25 (exact "675.55" / "commercial property"), and
+   cross-encoder rerank are supposed to fix — Q13 is the canary for whether each
+   change works.
+3. **The score-only refusal guardrail (Challenge #1 / Phase 3) cannot be built
+   on these scores.** In-scope top-1 spans 0.684–0.829; out-of-scope top-1 spans
+   0.676–0.762 — the ranges **overlap**. Out-of-scope Q27 scores 0.762, above
+   half the real questions. No single cosine cutoff separates answerable from
+   unanswerable today. The reranker in Change 3 is not just an accuracy tweak —
+   it is what makes a usable threshold *possible*, because cross-encoder logits
+   should separate genuine matches from topical-but-absent far better than
+   bi-encoder cosine. Re-check this separation after every Phase 2 change.
+
+### Best solution
+
+- Treat the baseline as a **control, not a target**. Optimise MRR + score
+  separation; keep Q13 and the out-of-scope set as the questions that must
+  improve.
+- Keep every configuration's row in `data/eval/results.md` so a change that
+  moves Hit@3 by noise but MRR by a real margin is still visible.
+- When the corpus grows (Phase 6, second state), revisit K — Hit@5 / Recall@5
+  regain meaning once "the right doc in the top 3 of 18" is no longer trivial.
+
+### Applied so far
+
+- ✅ Baseline measured and recorded (`data/eval/results.md`, row 1).
+- ✅ Eval set includes the near-duplicate comparison cluster and 5 out-of-scope
+  questions (Challenge #1, solution D).
+- ✅ Change 1 header-aware chunking measured — not a win, reverted (Challenge #5).
+- ⏳ Changes 2–3 (BM25+RRF, rerank) — re-measure MRR + score separation each time.
+- ⏳ Score-threshold guardrail tuned on the out-of-scope set — Phase 3.
+
+---
+
+## 5. Header-aware chunking made retrieval *worse* on this corpus
+
+**Phase:** 2, Change 1
+
+### Symptom
+
+The roadmap's first planned retrieval improvement — split each bulletin into
+heading-keyed sections (`RE:` topic line, `I.`/`II.` roman sections, `A.`/`B.`
+subsections), chunk within each section, stamp every chunk with its heading path
+in `parent_headers`, and prepend that path to the embedded text — regressed
+every headline metric against the naive baseline:
+
+| config | Hit@3 | Recall@3 | MRR |
+|---|---|---|---|
+| naive baseline (dense, 300/50) | 0.957 | 0.957 | **0.862** |
+| header-aware, heading prefix embedded | 0.957 | 0.913 | 0.804 |
+| header-aware chunks, raw-text embed (prefix off) | 0.957 | 0.913 | 0.833 |
+
+Reverted to naive for the pipeline; the module and the `--naive` / header-aware
+switch stay for a future corpus that actually has structure.
+
+### Root cause
+
+Two independent effects, both negative here:
+
+1. **The embedded heading prefix is identical boilerplate across the
+   near-duplicate pairs.** Life PBR 2025-8 and 2026-3 share the exact `RE:`
+   line ("Principle-Based Reserving - Life Annual Aggregate Assessment"); LTC
+   2025-9 / 2026-4 likewise; 5 of the 6 wildfire-moratorium bulletins share a
+   generic `RE:` line with no fire name. Prepending identical text to both
+   members of a pair *adds a common component to their vectors* and drowns the
+   body signal that was doing the disambiguation — the fiscal year and the
+   dollar figure. Result: PBR questions started returning the wrong year at
+   rank 1 (q01, q14, q15, q17, q19, q22).
+2. **Section splitting fragments and shifts chunk boundaries even with the
+   prefix off.** 15 of 18 bulletins have no roman/letter structure, so they gain
+   nothing; the 3 that do (mainly the AB 144 bulletin) get shattered into many
+   sub-100-word chunks, and the sliding window now stops at every section edge,
+   so chunk contents differ corpus-wide. 49 → 53 chunks, MRR still down to
+   0.833.
+
+### Learning
+
+1. **Header-aware chunking is a technique for structured long documents, not a
+   universal upgrade.** It pays off when sections are long, semantically
+   distinct, and headed by *discriminative* titles. This corpus is the
+   opposite: short bulletins (median ~1 chunk), flat structure, and where a
+   heading exists it is shared boilerplate. Matching the technique to the
+   document shape matters more than adopting it because the roadmap listed it.
+2. **Prepending a heading to the embedded text is only safe when the heading
+   discriminates.** A heading that is constant across the documents you most
+   need to tell apart is pure common-mode noise in the vector.
+3. **This is why Phase 2 measures one change at a time against a recorded
+   baseline.** The roadmap *assumed* header-aware chunking would help (it was
+   written for an HTML corpus + `HTMLHeaderTextSplitter`). Measurement, not the
+   plan, decided it. The baseline row made the regression obvious and the
+   revert safe.
+4. **The near-duplicate disambiguation still needs a fix — just not this one.**
+   Q13 still misses; the PBR-year and moratorium-clone separation is still thin.
+   That work moves to BM25 (exact "FY 2024-25", "$3,188,000", "§ 675.55",
+   "commercial property") and the cross-encoder reranker, which score the query
+   against the *chunk body*, not a boilerplate header.
+
+### Best solution
+
+- **Keep naive fixed-size chunking as the Phase 2 pipeline base.** Carry the
+  0.862 MRR baseline into Change 2.
+- **Keep `src/ingestion/headers.py`, the `--naive` flag, and
+  `EMBED_WITH_HEADERS` (default off).** Header-aware chunking is likely correct
+  for a second state whose source documents are long regulations with a real
+  table of contents; it should be re-measured there, not assumed then either.
+- If `parent_headers` is wanted for Phase 4 citations, populate it as payload
+  metadata without changing the embedded text or the chunk boundaries.
+
+### Applied so far
+
+- ✅ `src/ingestion/headers.py` — section splitter + `format_for_embedding`.
+- ✅ `chunk_and_index.py` — `chunk_document(...)`, `--naive` flag, `header_aware`
+  logged in the run record.
+- ✅ `EMBED_WITH_HEADERS` config switch, default off, with the rationale inline.
+- ✅ Measured both variants, recorded all rows in `data/eval/results.md`,
+  re-indexed naive — baseline reproduced exactly (MRR 0.862).
+- ✅ Pipeline reverted to naive chunking; module retained for a structured corpus.
