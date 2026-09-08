@@ -7,72 +7,74 @@ Snapshot written 2026-09-07. Overwrite this file at the end of each session;
 
 ## Where the project stands
 
-**Phase 0, 1 — done.**
+**Phase 0, 1, 2 — done.** See `docs/pipeline.md` / `data/eval/results.md`.
 
-**Phase 2 — done.** Retrieval quality, measured one change at a time.
-Best pipeline: `hybrid_rerank` (BM25+dense, RRF-fused, `bge-reranker-base`
-reranked), MRR 0.833 → 0.884. Full numbers: `data/eval/results.md`.
+**Phase 3 — done.** Production API (`src/api/`): `/query`, `/ingest`,
+`/healthcheck`, `/feedback`, hybrid+rerank wired into production
+(`src/retrieval/hybrid.py`), score-threshold refusal guardrail
+(`REFUSAL_SCORE_CUTOFF=0.5`), provider abstraction (`src/providers/`, Ollama
+only), `pytest tests/` (7 integration tests against real local infra).
 
-**Phase 3 — done.** Production API, guardrails & caching.
+**Phase 4 — done.** UI, citations & feedback.
 
-- **Retrieval refactor:** `src/retrieval/hybrid.py::retrieve_chunks()` is now
-  the shared chunk-level retrieval core — used by `src/ask.py` (CLI, unchanged
-  interface) AND `src/api/main.py` (new). `src/evaluation/retrievers.py` was
-  refactored to call into it too (re-verified: identical eval numbers,
-  MRR 0.884, post-refactor).
-- **Provider abstraction:** `src/providers/` — `Provider` interface,
-  `OllamaProvider` implemented, `LLM_PROVIDER` config switch.
-  `embed.py`/`generate.py` route through `get_provider()`, never `ollama.*`
-  directly. `OpenAIProvider` deferred to Phase 5 (no API key needed yet).
-- **Refusal guardrail:** `REFUSAL_SCORE_CUTOFF = 0.5` (config/settings.py),
-  derived from `data/eval/hybrid_rerank_scores.json` — in-scope top1 scores
-  [0.693, 1.000], out-of-scope [0.003, 0.286], clean non-overlapping gap.
-  Below cutoff, `generate.py` skips the LLM call entirely (verified: refused
-  queries return in ~4-12s vs. ~40-47s for an actual generation).
-- **JSON-mode output:** `answer_question(..., json_mode=True)` — Ollama
-  `format="json"`, Pydantic `LLMAnswer` validation, one retry with a
-  corrective follow-up message on `JSONDecodeError`/`ValidationError`.
-- **FastAPI service:** `src/api/main.py` — `/query`, `/ingest`,
-  `/healthcheck`, `/feedback`. Startup `lifespan` warms the BM25 index +
-  reranker once (not per-request). Sync `def` routes (not `async def`) so
-  FastAPI's threadpool handles Ollama's blocking calls without an async
-  rewrite. Exact-query cache (in-memory dict, cleared on `/ingest`).
-  Correlation IDs thread through `logs/runs.jsonl`.
-- **Error handling — actually tested, not assumed:** stopped the real Qdrant
-  container mid-session, confirmed `/query` returns a structured `503`
-  (`qdrant_client.http.exceptions.ResponseHandlingException`, NOT Python's
-  builtin `ConnectionError` — verified empirically, an early version of the
-  except clause had this wrong), then restarted Qdrant and confirmed recovery.
-  A catch-all `Exception` handler backstops anything else — never a bare 500.
-- **Tests:** `tests/` — pytest integration tests against real local
-  Qdrant+Ollama (`pytest tests/`, all 7 passing). One exception:
-  the Qdrant-outage test uses `monkeypatch` (not a live container stop —
-  that was done manually once, separately, to derive the exception type and
-  verify the real behavior).
+- **`ui/app.py`** — Streamlit, two tabs (Ask / Admin), pure HTTP client of
+  the API (never imports pipeline internals directly). Verified working by
+  the user in a real browser at `http://localhost:8501`.
+- **API extensions** (all additive, `pytest tests/` still 7/7 passing):
+  `Citation.parent_headers`, `QueryResponse.retrieved_chunks`,
+  `QueryRequest.document_type`, `GET /admin/feedback_stats`,
+  `GET /admin/recent_queries`.
+- **`feedback.db`** (SQLite, `src/storage/feedback_db.py`) — `/feedback` now
+  writes durable rows (question, answer, rating, comment), not just a
+  `log_run()` line. One writer (the API); the UI never touches SQLite
+  directly.
+- **A real bug caught and fixed while adding `document_type` filtering:**
+  `hybrid_fused_chunks()`'s BM25 branch never honored `state`/`document_type`
+  at all — only the dense branch applied Qdrant's pre-filter. Invisible with
+  a single-state, single-doc-type corpus; fixed by filtering the *fused*
+  candidate list (both branches) before reranking. See `docs/pipeline.md`
+  §10 finding 13.
+- **A real gotcha caught running the UI:** `streamlit run ui/app.py` failed
+  with `ModuleNotFoundError: No module named 'config'` even from the repo
+  root — Streamlit only puts the script's own directory on `sys.path`,
+  unlike `python -m src.ask`. Fixed with an explicit `sys.path.insert(0, ...)`
+  at the top of `ui/app.py`. See `docs/pipeline.md` §10 finding 14.
 
-Run it: `bash scripts/start.sh`, then
-`uvicorn src.api.main:app --reload` (or `python -m src.ask "..."` for the CLI).
+Run it: `bash scripts/start.sh` → `uvicorn src.api.main:app --reload` →
+`streamlit run ui/app.py` → `http://localhost:8501`.
 
-**Phase 4 — not started.** This is next.
+**Phase 5 — not started.** This is next.
 
 ---
 
-## Phase 4 task list (from `Roadmap_Final.md`)
+## Phase 5 task list (from `Roadmap_Final.md`)
 
-Goal: browser interface with answers, linked citations, metadata display,
-feedback capture.
+Goal: automated evaluation (deterministic + LLM-judge) gating a Blue/Green
+index swap, plus the OpenAI provider comparison.
 
-1. Streamlit UI: search box, answer display, `document_type` filter.
-2. Render citations as clickable links to `source_url`, `parent_headers` as
-   a breadcrumb.
-3. Sidebar: retrieved context chunks with their rerank confidence scores.
-4. Thumbs up/down feedback → SQLite (`/feedback` already exists and logs to
-   `logs/runs.jsonl` — Phase 4 adds real `feedback.db` storage, linked to
-   query + response + correlation ID).
-5. Admin tab: feedback counts, recent low-confidence and refused queries.
+1. `src/evaluation/answer_eval.py` — LLM-as-a-Judge: score each generated
+   answer for **Faithfulness** (every claim supported by retrieved context?)
+   and **Answer Relevance** (addresses the question?).
+2. Full harness: eval set through the whole pipeline → Hit@5, Recall@5, MRR,
+   Faithfulness, Answer Relevance.
+3. Quality gates (tune from baseline, start at): Hit@5 ≥ 0.80 **and**
+   Faithfulness ≥ 0.85.
+4. **Blue/Green collection swap:** `insurance_ca_v2` (staging) → eval gate →
+   flip `insurance_ca_live` alias. (`docs/scaling-notes.md` §8 already has
+   the "senior engineering decision" write-up for this — a gated pipeline
+   step, not a manual command.)
+5. `OpenAIProvider` — real second implementation behind the Phase 3
+   abstraction (`src/providers/`), config-flip via `LLM_PROVIDER`.
 
-**Done when:** open browser → ask a CA question → see an answer with working
-citations → click through to the source → leave feedback that lands in SQLite.
+**GPU trigger, per the Phase 2 decision already on record:** LLM-as-judge is
+~25 questions × 2 judgements, each a generation — genuinely slow on CPU
+(~15-25 min/run, re-run on every change). This is the phase to actually move
+off CPU-only inference, either via the OpenAI provider (task 5, cheapest to
+set up) or a GPU environment.
+
+**Done when:** an automated run reports Hit@5/Recall@5/MRR + Faithfulness +
+Answer Relevance, gates pass before `insurance_ca_live` flips, and the
+OpenAI/Ollama comparison is a documented, measured result (not assumed).
 
 ---
 
@@ -81,8 +83,9 @@ citations → click through to the source → leave feedback that lands in SQLit
 ```bash
 bash scripts/start.sh                 # Docker + Qdrant + Ollama + models, warmed
 source venv/Scripts/activate
-python -m src.ask "smoke damage claims" --show-chunks   # CLI, hybrid+rerank now
-uvicorn src.api.main:app --reload     # API service
+python -m src.ask "smoke damage claims" --show-chunks   # CLI
+uvicorn src.api.main:app --reload     # API
+streamlit run ui/app.py                # UI (needs API up)
 pytest tests/                          # integration tests (needs infra up)
 ```
 
@@ -102,12 +105,16 @@ See `Challenges and Learnings.md` and `docs/pipeline.md` §10 for full write-ups
 2. Footnote superscripts inline as digits (cosmetic).
 3. Every retrieval eval number so far assumes **exact** vector search — see
    `docs/scaling-notes.md` §5.
-4. **`docs/pipeline.md` §3–7 (query-path detail) is now stale** — still
-   describes Phase 1's dense-only flow. Needs a rewrite for Phase 3's
-   hybrid+rerank+guardrail+API flow; not done this session (flagged in the
-   doc itself, not silently wrong).
-5. Cache/BM25/reranker singletons don't invalidate on re-index within a
-   running server process — known, accepted limitation at this scale, see
-   `docs/scaling-notes.md` §3/§8 (Redis+TTL, Blue/Green are the real fixes,
-   both deferred).
-6. `requirements.txt` now also pins `pytest==9.1.1` (+ `pluggy`, `iniconfig`).
+4. Cache/BM25/reranker singletons don't invalidate on re-index within a
+   running server process — known, accepted limitation, see
+   `docs/scaling-notes.md` §3/§8 (Redis+TTL, Blue/Green are the real fixes;
+   Blue/Green is now next up, Phase 5 task 4).
+5. `requirements.txt` now also pins `streamlit==1.63.0`, `pandas==3.0.5`.
+6. No auth on `/admin/*` — local dev tool, out of roadmap scope, noted not built.
+7. **Not yet investigated: prompt/query injection defense.** Next
+   conversation topic per the user — retrieved-document content and/or user
+   questions could contain text crafted to manipulate the LLM's instructions
+   (e.g. a bulletin PDF containing "ignore previous instructions..."). Not
+   addressed by anything built so far (`SYSTEM_PROMPT`/`JSON_SYSTEM_PROMPT`
+   have no defense beyond normal instruction framing). Worth deciding whether
+   this belongs in Phase 5's hardening or stands alone.

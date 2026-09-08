@@ -1,30 +1,21 @@
 # Current Pipeline — State Insurance Regulations Knowledge Assistant
 
-**Status:** end of Phase 3 (production API, guardrails & caching, California
-only). **Sections 3–7 below are now STALE** — they describe Phase 1's
-dense-only query path (`src/ask.py` → `search.py`). As of Phase 3:
+**Status:** end of Phase 4 (UI, citations & feedback, California only). The
+offline ingestion pipeline (§3–6) is unchanged since Phase 2. The online
+query pipeline (§7) reflects Phase 3: production retrieval is
+`src/retrieval/hybrid.py::retrieve_chunks()` (BM25+dense fused via RRF,
+reranked by `bge-reranker-base`, now with an optional `document_type`
+filter — Phase 4), shared by `src/ask.py` (CLI), `src/api/main.py` (FastAPI
+service, §7.5), and now `ui/app.py` (Streamlit, §11, calling the API over
+HTTP — never the pipeline directly). A score-threshold refusal guardrail
+(`REFUSAL_SCORE_CUTOFF=0.5`) skips the LLM call entirely on out-of-scope
+questions, `src/providers/` abstracts the LLM/embedding backend, and Phase 4
+adds durable feedback storage (`feedback.db`, SQLite) plus two admin-facing
+API endpoints.
 
-- Production retrieval is `src/retrieval/hybrid.py::retrieve_chunks()` —
-  BM25+dense fused via RRF, reranked by `bge-reranker-base`, wired into both
-  `src/ask.py` (CLI) and the new `src/api/main.py` (FastAPI service).
-- A score-threshold refusal guardrail (`REFUSAL_SCORE_CUTOFF=0.5`, derived
-  from `data/eval/hybrid_rerank_scores.json`) skips the LLM call entirely on
-  out-of-scope questions.
-- `src/providers/` abstracts the LLM/embedding backend (`OllamaProvider` only
-  for now; `OpenAIProvider` is Phase 5).
-- `src/api/main.py` exposes `/query`, `/ingest`, `/healthcheck`, `/feedback`
-  with an exact-query cache, correlation IDs, and structured error handling
-  (all verified against real local Qdrant/Ollama, including an actual
-  Qdrant-outage test, not a simulated one).
-- `tests/` holds integration tests (`pytest tests/`) against real local infra.
-
-Sections 3–7's *module-by-module* detail (parsing, chunking mechanics) is
-still accurate for the offline ingestion pipeline. **The query-path sections
-need a full rewrite for Phase 3's flow** — not done in this pass; treat the
-sequence diagram in §7 as Phase 1 history until that rewrite happens.
-See `data/eval/results.md` / `hybrid_rerank_scores.json` for the numbers
-behind these decisions, and `docs/scaling-notes.md` for what changes at
-production scale (in-memory cache, process-lifetime singletons, etc.).
+See `data/eval/results.md` / `hybrid_rerank_scores.json` for the retrieval
+numbers, and `docs/scaling-notes.md` for what changes at production scale
+(in-memory cache, process-lifetime singletons, etc.).
 
 This document describes **exactly what the code does today**, module by module.
 It is a snapshot; when a phase changes the flow, update this file.
@@ -51,7 +42,7 @@ flowchart TB
         direction TB
         RAW[("data/raw/ca/\nPDFs + manifest.json")]
         PROC[("data/processed/ca/\nJSON + TXT + manifest.json")]
-        QD[("Qdrant\ninsurance_ca_v1\n49 points / 18 docs")]
+        QD[("Qdrant\ninsurance_ca_v1\n53 points / 18 docs")]
     end
 
     S -.writes.-> RAW
@@ -60,17 +51,25 @@ flowchart TB
     C -.reads.-> PROC
     C -.writes.-> QD
 
-    subgraph ONLINE["ONLINE — query (src/ask.py)"]
+    subgraph ONLINE["ONLINE — query (src/ask.py CLI, or src/api/main.py FastAPI)"]
         direction TB
-        Q["question (CLI arg)"]
-        SR["src/retrieval/search.py\nembed question -> Qdrant vector search (state filter)"]
-        PR["src/generation/prompt.py\nbuild system + user messages from top-k chunks"]
-        GE["src/generation/generate.py\nollama.chat(llama3.2:3b)"]
-        PRES["src/ask.py\nprint answer + deduped sources"]
-        Q --> SR --> PR --> GE --> PRES
+        Q["question (CLI arg, or POST /query)"]
+        CACHE{"exact-query cache hit?\n(API only)"}
+        HY["src/retrieval/hybrid.py :: retrieve_chunks()\ndense + BM25, RRF-fused, bge-reranker-base reranked -> top-k"]
+        GUARD{"top score < REFUSAL_SCORE_CUTOFF (0.5)?"}
+        REFUSE["structured refusal\n(LLM never called)"]
+        PR["src/generation/prompt.py\nbuild system + user messages (json_mode for API)"]
+        GE["src/generation/generate.py\nProvider.chat() -- OllamaProvider by default"]
+        PRES["src/ask.py (print) or src/api/main.py (JSON response)"]
+        Q --> CACHE
+        CACHE -- hit --> PRES
+        CACHE -- miss --> HY
+        HY --> GUARD
+        GUARD -- yes --> REFUSE --> PRES
+        GUARD -- no --> PR --> GE --> PRES
     end
 
-    QD -.vector search.-> SR
+    QD -.dense search.-> HY
 ```
 
 ---
@@ -100,8 +99,12 @@ Every module imports its constants from here. Env vars of the same name override
 | `LLM_MODEL` | `llama3.2:3b` (Ollama) — small on purpose: CPU-only inference, see below | generate |
 | `LLM_NUM_PREDICT` | `300` (max generated tokens) | generate |
 | `OLLAMA_KEEP_ALIVE` | `30m` (models stay resident between calls) | embed, generate |
-| `RETRIEVE_K` | `3` (chunks sent to the LLM) | generate, `ask.py` |
+| `RETRIEVE_K` | `3` (chunks sent to the LLM) | generate, `ask.py`, API `QueryRequest` |
 | `PAYLOAD_INDEXES` | `{state: keyword, document_type: keyword, date_effective: datetime}` | bootstrap |
+| `RRF_K` | `60` (RRF damping constant) | `retrieval/hybrid.py` |
+| `RERANK_MODEL` | `BAAI/bge-reranker-base` | `retrieval/hybrid.py` |
+| `REFUSAL_SCORE_CUTOFF` | `0.5` — derived from `data/eval/hybrid_rerank_scores.json` (in-scope min 0.693, OOS max 0.286) | `generate.py` guardrail |
+| `LLM_PROVIDER` | `"ollama"` (only implemented backend; `"openai"` is Phase 5) | `src/providers/` factory |
 
 External services assumed running: **Qdrant** (`docker compose up -d`, port 6333)
 and **Ollama** (native, serving `llama3.2:3b` + `nomic-embed-text`).
@@ -335,7 +338,7 @@ flowchart TD
     D1 --> E{"--dry-run?"}
     E -- yes --> E1["print 'Nw -> M chunk(s)'; continue"]
     E -- no --> F["build_points(doc, chunks)"]
-    F --> F1["vectors = embed_batch(chunks)\n= ollama.embed(nomic-embed-text, input=chunks)"]
+    F --> F1["vectors = embed_batch(chunks)\n-> get_provider().embed(chunks) -> ollama.embed (Phase 3: via provider)"]
     F1 --> F2["for i, chunk:\nchunk_id = '<doc_id>_c<i>'\npoint.id = uuid5(NAMESPACE_URL, chunk_id)\npoint.vector = vectors[i]\npoint.payload = {10 fields}"]
     F2 --> G["delete_doc_points(doc_id)\n(FilterSelector: doc_id == this doc)"]
     G --> H["client.upsert(collection='insurance_ca_v1', points=...)"]
@@ -392,14 +395,15 @@ confirmed 300/50 already ties for the best MRR — no change made.
   "date_issued": "2025-02-25",
   "date_effective": null,
   "source_url": "https://www.insurance.ca.gov/.../Bulletin-2025-7-....pdf",
-  "parent_headers": [],
+  "parent_headers": ["RE: Insurance Coverage for Smoke Damage ..."],
   "chunk_id": "CA_BULLETIN_2025_7_c0",
   "content": "<the 300-word slice of cleaned text>"
 }
 ```
 
-`parent_headers` is always `[]` in Phase 1 (populated only when header-aware
-chunking lands in Phase 2).
+`parent_headers` is populated since Phase 2's header-aware chunking (§6
+above) — the heading path is stored as metadata but NOT prepended to the
+embedded text (`EMBED_WITH_HEADERS=0` default).
 
 ### Qdrant collection state
 
@@ -408,152 +412,239 @@ chunking lands in Phase 2).
 | Name | `insurance_ca_v1` |
 | Vector | size 768, distance Cosine |
 | Payload indexes | `state` (keyword), `document_type` (keyword), `date_effective` (datetime) |
-| Points | 49 (from 18 docs) |
-| `indexed_vectors_count` | 0 — below Qdrant's `indexing_threshold` (10000), so search is **exact** brute force, not HNSW. This is expected and fine at this scale. |
+| Points | 53 (from 18 docs, header-aware chunking) |
+| `indexed_vectors_count` | 0 — below Qdrant's `indexing_threshold` (10000), so search is **exact** brute force, not HNSW. This is expected and fine at this scale — see `docs/scaling-notes.md` §5 for what changes past that threshold. |
 
 ---
 
 ## 7. Online — Query pipeline
 
-**Entry point:** `src/ask.py`
-**Run:** `python -m src.ask "<question>" [--state CA|all] [--k 5] [--show-chunks]`
+**Shared core:** `src/generation/generate.py::answer_question()`, called by
+both `src/ask.py` (CLI, free-text answers) and `src/api/main.py` (`/query`,
+JSON-mode answers). One implementation, two thin consumers — same pattern as
+the retrieval split in §7.1.
+
+**Run (CLI):** `python -m src.ask "<question>" [--state CA|all] [--k 3] [--show-chunks]`
+**Run (API):** `uvicorn src.api.main:app --reload`, then `POST /query`
 
 ### Sequence
 
 ```mermaid
 sequenceDiagram
-    participant U as User (CLI)
-    participant ASK as src/ask.py
-    participant GEN as generation/generate.py
-    participant SR as retrieval/search.py
-    participant EMB as ingestion/embed.py
-    participant OLL_E as Ollama (nomic-embed-text)
-    participant QD as Qdrant (insurance_ca_v1)
-    participant OLL_L as Ollama (llama3.2:3b)
+    participant U as Caller (CLI or API client)
+    participant ENT as src/ask.py or src/api/main.py
+    participant GEN as generation/generate.py :: answer_question()
+    participant HY as retrieval/hybrid.py :: retrieve_chunks()
+    participant BM25 as BM25 index (in-memory, cached)
+    participant QD as Qdrant (dense search)
+    participant RR as CrossEncoder (bge-reranker-base, cached)
+    participant PR as generation/prompt.py
+    participant PROV as providers/ :: get_provider().chat()
+    participant OLL as Ollama (llama3.2:3b)
 
-    U->>ASK: question, --state, --k
-    ASK->>ASK: state = None if --state == "all" else "CA"
-    ASK->>GEN: answer_question(question, state, k)
-    GEN->>SR: search(question, state, limit=k)
-    SR->>EMB: embed_text(question)
-    EMB->>OLL_E: ollama.embed(input=question)
-    OLL_E-->>EMB: 768-dim vector
-    EMB-->>SR: vector
-    SR->>QD: query_points(vector, query_filter=state, limit=k, with_payload=True)
-    QD-->>SR: list[ScoredPoint] (score + payload)
-    SR-->>GEN: hits
-    alt hits is empty
-        GEN-->>ASK: {answer: "No matching passages were retrieved.", sources: [], hits: []}
-    else has hits
-        GEN->>GEN: build_messages(question, hits)
-        GEN->>OLL_L: ollama.chat(llama3.2:3b, [system, user])
-        OLL_L-->>GEN: message.content
-        GEN-->>ASK: {answer, sources (deduped by doc_id), hits}
+    U->>ENT: question, state, k [+ /query: exact-cache check first]
+    ENT->>GEN: answer_question(question, state, k, json_mode)
+    GEN->>HY: retrieve_chunks(question, state, k)
+    HY->>QD: search() -- dense candidates (top CANDIDATE_POOL=20)
+    HY->>BM25: bm25_ranked_chunk_ids() -- sparse candidates (top 20)
+    HY->>HY: reciprocal_rank_fusion(dense_ids, bm25_ids)
+    HY->>RR: predict([(query, chunk.content), ...]) over fused top-20
+    RR-->>HY: reranked scores
+    HY-->>GEN: top-k ScoredChunk (no doc dedup; content intact)
+    alt no hits
+        GEN-->>ENT: {answer: "No matching passages were retrieved.", ...}
+    else top score < REFUSAL_SCORE_CUTOFF (0.5)
+        GEN-->>ENT: {answer: REFUSAL_MESSAGE, sources: [], status: refused_guardrail}
+        Note over GEN,OLL: LLM never called -- guardrail short-circuits here
+    else top score >= cutoff
+        GEN->>PR: build_messages(question, hits, json_mode)
+        PR-->>GEN: [system, user] messages (JSON-constrained if json_mode)
+        GEN->>PROV: chat(messages, json_mode)
+        PROV->>OLL: ollama.chat(llama3.2:3b, format="json" if json_mode else None)
+        OLL-->>PROV: message.content
+        PROV-->>GEN: raw response
+        opt json_mode and invalid JSON
+            GEN->>PROV: chat(retry_messages, json_mode=True)
+            Note over GEN: one retry with a corrective follow-up (Pydantic ValidationError/JSONDecodeError)
+        end
+        GEN-->>ENT: {answer, sources (deduped by doc_id), hits, meta}
     end
-    ASK->>U: print answer
-    ASK->>U: print "Sources:" (or "Retrieved context (not used...)" on refusal)
-    opt --show-chunks
-        ASK->>U: print each retrieved passage (chunk_id, score, first 500 chars)
-    end
+    ENT->>U: CLI: print answer + sources / API: QueryResponse JSON [+ cache the result]
 ```
 
-### 7.1 Retrieval — `src/retrieval/search.py`
+### 7.1 Retrieval — `src/retrieval/hybrid.py`
 
 ```python
-search(query, state="CA", limit=3):   # generate.py passes RETRIEVE_K = 3
-    client  = QdrantClient(localhost:6333)          # new client per call
-    vector  = embed_text(query)                     # Ollama nomic-embed-text, 768-dim
-    filter  = None if state is None else
-              Filter(must=[FieldCondition(key="state", match=MatchValue(state))])
-    return client.query_points(
-        collection_name = "insurance_ca_v1",
-        query           = vector,
-        query_filter    = filter,                   # metadata PRE-filter
-        limit           = limit,
-        with_payload    = True,
-    ).points                                        # list[ScoredPoint]
+retrieve_chunks(query, state="CA", k=3) -> list[ScoredChunk]:
+    fused = hybrid_fused_chunks(query, CANDIDATE_POOL=20, state)  # dense + BM25, RRF-fused
+    pairs = [(query, c["content"]) for c in fused]
+    scores = reranker().predict(pairs)               # bge-reranker-base, cross-encoder
+    ranked = sorted(zip(fused, scores), key=score, reverse=True)
+    return [ScoredChunk(payload=c, score=s) for c, s in ranked[:k]]
 ```
 
-- **Single dense vector search.** No BM25, no fusion, no rerank. Cosine
-  similarity over 49 vectors.
-- **`state` is a pre-filter** — Qdrant restricts the candidate set to
-  `state == "CA"` *before* scoring (uses the `state` keyword payload index).
-  `--state all` passes `None` and searches everything (still only CA data
-  exists).
-- Score in the output is cosine similarity in `[-1, 1]`; observed values for
-  real questions sit around `0.6–0.75`.
+- **Hybrid, not dense-only** (Phase 1→3 change): dense cosine search +
+  in-memory BM25 (`bm25_corpus()`, scrolled once from Qdrant, cached
+  `lru_cache(maxsize=1)`), fused by Reciprocal Rank Fusion (`RRF_K=60`), then
+  **reranked** by a real cross-encoder (`reranker()`, also cached) — see
+  `data/eval/results.md` for the measured MRR gain at each step
+  (0.833 → 0.855 → 0.884).
+- **No doc-level dedup** — same as Phase 1's dense-only `search()`: returns
+  raw top-k chunks (possibly several from the same bulletin), and
+  `_sources()` (§7.3) collapses to distinct documents for citation display.
+- `ScoredChunk` duck-types Qdrant's `ScoredPoint` (`.payload`, `.score`) so
+  `prompt.py`/`generate.py` needed **zero changes** to consume hybrid+rerank
+  results instead of raw dense hits.
+- `state` is still a Qdrant pre-filter on the dense half only (BM25 has no
+  per-query collection notion — see `hybrid.py`'s `bm25_corpus()` docstring).
+- Scores are now cross-encoder relevance scores, not cosine similarity —
+  observed in-scope range `[0.69, 1.00]`, out-of-scope `[0.00, 0.29]` (see
+  `data/eval/hybrid_rerank_scores.json`), a different scale than Phase 1's
+  `[0.6, 0.75]` cosine range.
+- **This same function is what `src/evaluation/retrievers.py`'s
+  `hybrid`/`hybrid_rerank` strategies call into** — the eval harness and the
+  production path share this one implementation (`docs/scaling-notes.md`
+  discusses what changes here at production scale: real inverted index,
+  process-external singletons, etc.).
 
-### 7.2 Prompt construction — `src/generation/prompt.py`
-
-`build_messages(question, hits)` returns:
-
-```
-[ {role: system, content: SYSTEM_PROMPT},
-  {role: user,   content: "Context passages:\n\n" + format_context(hits)
-                          + "\n\nQuestion: " + question} ]
-```
-
-`format_context` renders each hit as:
-
-```
-[1] Bulletin 2025-7 - Bulletin 2025-7: Insurance Coverage for Smoke Damage ...
-Source: https://www.insurance.ca.gov/.../Bulletin-2025-7-....pdf
-<chunk content>
-
-[2] Bulletin 2025-9 - ...
-...
-```
-
-`SYSTEM_PROMPT` (current, softened version) instructs the model to:
-- base every claim on the passages, no outside knowledge, no guessed
-  figures/dates/code sections;
-- **combine / compare / summarise across passages is explicitly allowed**;
-- reply **exactly** `"The provided bulletins do not cover this."` *only* if the
-  passages do not address the topic at all;
-- cite bulletin numbers, e.g. `(Bulletin 2025-8)`;
-- be concise, quote regulatory language when it matters.
-
-> The earlier, stricter prompt ("if the context does not contain the answer,
-> refuse") caused the dev LLM (then `llama3.1:8b`) to refuse a valid
-> *comparison* question because no single passage stated the comparison
-> verbatim. This is a known weakness of **prompt-based refusal** and the reason
-> Phase 3 moves refusal to a retrieval-score threshold. See
-> `Challenges and Learnings.md` #1.
-
-### 7.3 Generation — `src/generation/generate.py`
+### 7.2 The refusal guardrail — `config/settings.py` + `generate.py`
 
 ```python
-answer_question(question, state="CA", k=RETRIEVE_K):   # RETRIEVE_K = 3
-    hits = search(question, state, k)
-    if not hits:
-        return {"answer": "No matching passages were retrieved.", "sources": [], "hits": []}
-    messages = build_messages(question, hits)
-    resp = ollama.chat(
-        model="llama3.2:3b", messages=messages,
-        keep_alive=OLLAMA_KEEP_ALIVE,                 # "30m" - skip model reload
-        options={"num_predict": LLM_NUM_PREDICT},     # 300 - cap output length
-    )
-    return {
-        "answer":  resp["message"]["content"].strip(),
-        "sources": _sources(hits),     # one row per doc_id, best score wins, sorted desc
-        "hits":    hits,
-    }
+top_score = hits[0].score
+if top_score < REFUSAL_SCORE_CUTOFF:      # 0.5
+    return {"answer": REFUSAL_MESSAGE, "sources": [], ...}   # LLM never called
+```
+
+`REFUSAL_SCORE_CUTOFF = 0.5` was derived, not guessed: `retrieval_eval.py
+--dump-json` recorded every eval question's top reranked score
+(`data/eval/hybrid_rerank_scores.json`) — in-scope scores ranged
+`[0.693, 1.000]`, out-of-scope `[0.003, 0.286]`, a clean non-overlapping gap.
+0.5 sits at that gap's midpoint. This replaces Phase 1's **prompt-based**
+refusal (asking the LLM to decline) — unreliable because a small model
+conflates "not stated verbatim" with "topic not covered" (see
+`Challenges and Learnings.md` #1) — with a cheaper, more reliable check that
+also skips the ~30-45s CPU generation cost entirely on out-of-scope questions.
+The old prompt-based instruction (`SYSTEM_PROMPT`'s refusal line, §7.3) still
+exists as a second line of defense for in-scope-scoring-but-actually-vague
+questions the guardrail doesn't catch.
+
+### 7.3 Prompt construction — `src/generation/prompt.py`
+
+`build_messages(question, hits, json_mode=False)` returns
+`[{role: system, ...}, {role: user, ...}]`. Two system prompts:
+
+- `SYSTEM_PROMPT` (CLI, free text) — base every claim on the passages, no
+  outside knowledge; combine/compare/summarise across passages is explicitly
+  allowed; reply exactly `"The provided bulletins do not cover this."` if the
+  passages don't address the topic; cite bulletin numbers; be concise.
+- `JSON_SYSTEM_PROMPT` (API, `json_mode=True`) — same rules, plus: respond
+  with ONLY `{"answer": "<string>"}`, no markdown fences, no other text.
+
+`format_context(hits)` renders each hit as
+`[i] Bulletin <num> - <title>\nSource: <url>\n<content>`, unchanged from
+Phase 1.
+
+### 7.4 Generation — `src/generation/generate.py`
+
+```python
+def answer_question(question, state="CA", k=RETRIEVE_K, json_mode=False):
+    hits = retrieve_chunks(question, state, k)                 # §7.1
+    if not hits: return {...}
+    if hits[0].score < REFUSAL_SCORE_CUTOFF: return {...}      # §7.2
+    messages = build_messages(question, hits, json_mode)       # §7.3
+    resp = get_provider().chat(messages, json_mode)            # §7.6
+    if json_mode:
+        try:
+            answer = LLMAnswer.model_validate(json.loads(resp_content)).answer
+        except (JSONDecodeError, ValidationError):
+            resp = get_provider().chat(retry_messages, json_mode=True)  # one retry
+            answer = ...  # re-parse, or fall back with status=malformed_llm_output
+    else:
+        answer = resp_content
+    return {"answer": answer, "sources": _sources(hits), "hits": hits, "meta": {...}}
 ```
 
 `_sources(hits)` collapses chunk-level hits to **document-level** citations:
 `{doc_id, bulletin_number, title, source_url, date_issued, score}`, deduped by
-`doc_id` keeping the max score, sorted by score descending.
+`doc_id` keeping the max score, sorted by score descending — unchanged from
+Phase 1, now operating on hybrid+rerank hits instead of dense-only ones.
 
-### 7.4 Presentation — `src/ask.py`
+`meta["status"]` is one of: `no_results`, `refused_guardrail` (§7.2),
+`answered`, `refused` (prompt-based, still possible), `malformed_llm_output`
+(JSON retry also failed — API path only).
 
-- Prints the answer.
-- Prints `Sources:` followed by numbered rows
-  (`[i] Bulletin <num> (<date_issued>) score=<x.xxx>`, title, URL).
-  If the answer begins with the refusal sentence, the header instead reads
-  `Retrieved context (not used - answer was a refusal):` — because the source
-  list is the *retrieved* chunks, not necessarily what the model used.
-- `--show-chunks` additionally dumps each retrieved passage
-  (`chunk_id`, score, first 500 chars, newlines flattened).
+### 7.5 API service — `src/api/main.py`
+
+FastAPI wraps `answer_question()` (and `retrieve_chunks()`/`reindex()`
+directly for `/ingest`) behind these endpoints:
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /healthcheck` | Pings Qdrant (`get_collections()`) and Ollama (`ollama.list()`) independently; `status: "ok"` \| `"degraded"` |
+| `POST /query` | Exact-cache check (normalized `(question, state, document_type, k)` key) → `answer_question(..., json_mode=True, document_type=...)` → `QueryResponse` (now incl. `retrieved_chunks`, `Citation.parent_headers` — Phase 4). Cached only when not refused/malformed. |
+| `POST /ingest` | Calls `chunk_and_index.py::reindex(only=...)` — re-embeds/upserts already-scraped-and-parsed docs. Clears the query cache (a re-index can invalidate a cached answer). |
+| `POST /feedback` | Writes to `feedback.db` (SQLite, via `src/storage/feedback_db.py`) **and** logs via `log_run()` — Phase 4 |
+| `GET /admin/feedback_stats` | `{up, down, total}` from `feedback.db` — Phase 4 |
+| `GET /admin/recent_queries?limit=50` | Newest-first tail of `logs/runs.jsonl`, `op == "query"` rows only — Phase 4 |
+
+**`document_type` filtering (Phase 4) fixed a real gap:** `hybrid_fused_chunks()`
+only applied its Qdrant `state`/`document_type` pre-filter to the *dense*
+branch — BM25 (`bm25_ranked_chunk_ids()`) scores the whole corpus every
+query, unfiltered. A wrong-type chunk could still win a slot via the BM25
+branch even though dense correctly excluded it. Invisible until now (single
+state, single doc type in the corpus); fixed by filtering the *fused*
+candidate list (both branches) before reranking, not just the dense
+pre-filter. See `docs/pipeline.md` §10 finding 13.
+
+**Startup (`lifespan`):** `bm25_corpus()` and `reranker()` are called once at
+app startup, not on the first request — otherwise the first `/query` would
+pay their ~1-2s load cost. Same `lru_cache` singletons `retrievers.py` and
+the eval harness use; the API just triggers them eagerly.
+
+**Sync routes, not async:** every route is a plain `def`, not `async def`.
+Ollama's client and Qdrant's client are both synchronous; FastAPI runs sync
+`def` routes in its threadpool automatically, so this avoids blocking the
+event loop without an async rewrite of `embed.py`/`generate.py`.
+
+**Error handling (verified against real infra, not assumed):**
+- `ResponseHandlingException` (Qdrant's own exception type — **not** a
+  builtin `ConnectionError`, confirmed empirically) or `ConnectionError`
+  (Ollama's client raises this one directly) during `/query` → structured
+  `503`.
+- A catch-all `@app.exception_handler(Exception)` backstops anything else as
+  a structured `500` (`{"error": "internal_error", "detail": ...}`), never a
+  bare traceback.
+- Verified by actually stopping the local Qdrant container mid-session,
+  confirming the `503`, then restarting and confirming recovery — not a
+  mocked test. (`tests/test_query.py`'s equivalent test uses `monkeypatch`
+  instead, to avoid disrupting the shared dev container on every test run.)
+
+**Exact-query cache:** in-memory `dict`, no TTL/eviction, cleared wholesale
+on `/ingest`. Known limitation at this scale (no multi-process sharing, no
+staleness detection beyond a manual re-index) — see `docs/scaling-notes.md`
+§3 for the Redis+TTL version at real scale.
+
+### 7.6 Provider abstraction — `src/providers/`
+
+```python
+get_provider().embed(texts) -> list[list[float]]
+get_provider().chat(messages, json_mode=False) -> <raw Ollama-shaped response>
+```
+
+`LLM_PROVIDER` (config) selects the backend; only `"ollama"` is implemented
+(`OllamaProvider`, wrapping the same `ollama.embed`/`ollama.chat` calls
+Phase 1 called directly). `embed.py` and `generate.py` now call through
+`get_provider()` everywhere — `ollama.*` no longer appears in either module.
+`OpenAIProvider` is Phase 5: a new class + a one-line config flip, not a
+rewrite, because both call sites already go through this interface.
+
+### 7.7 Presentation — `src/ask.py`
+
+Unchanged from Phase 1: prints the answer, then `Sources:` (or
+`Retrieved context (not used - answer was a refusal):` when refused),
+`--show-chunks` dumps each retrieved passage. Now shows reranker scores
+(`~0.6-1.0` range) instead of cosine similarity, and can show several chunks
+from the same bulletin (no dedup at retrieval time — see §7.1).
 
 ---
 
@@ -566,15 +657,20 @@ answer_question(question, state="CA", k=RETRIEVE_K):   # RETRIEVE_K = 3
 | `data/processed/ca/<doc_id>.json` | Stage 2 | Stage 3 | metadata + full `text` |
 | `data/processed/ca/<doc_id>.txt` | Stage 2 | humans | cleaned text only |
 | `data/processed/ca/manifest.json` | Stage 2 | Stage 3 | envelope + `documents[]` (18) |
-| Qdrant `insurance_ca_v1` | Stage 3 | `search.py`, `evaluation/retrievers.py` | 53 points, 768-dim + 10-field payload (`parent_headers` now populated) |
+| Qdrant `insurance_ca_v1` | Stage 3 | `retrieval/hybrid.py`, `evaluation/retrievers.py` | 53 points, 768-dim + 10-field payload (`parent_headers` populated) |
 | `data/eval/ca_eval_set.json` | hand-written | `retrieval_eval.py` | 28 questions (23 in-scope + 5 out-of-scope), each with target `doc_id`(s) |
 | `data/eval/results.md` | `retrieval_eval.py` / `chunk_sweep.py` | humans | one row per measured configuration, append-only |
+| `data/eval/hybrid_rerank_scores.json` | `retrieval_eval.py --dump-json` | guardrail threshold derivation (§7.2) | full per-question report, incl. every `top_score` |
+| in-memory exact-query cache (`src/api/main.py`) | `/query` (API only) | `/query` (API only) | `dict`, process lifetime, cleared on `/ingest` |
+| `logs/runs.jsonl` | `log_run()` — CLI, API, eval, ingest all write here | humans / `observability/report.py` / `GET /admin/recent_queries` | one JSON line per operation, incl. `correlation_id` |
+| `feedback.db` (SQLite) | `POST /feedback` (via `src/storage/feedback_db.py`) | `GET /admin/feedback_stats`, humans | `feedback` table: id, correlation_id, question, answer, rating, comment, created_at |
 
-Nothing in the *query* pipeline (§7) writes state. No cache, no logs beyond
-`log_run`, no request IDs (those arrive in Phase 3). The *eval* pipeline
-(`src/evaluation/`) is a separate, offline path — it queries Qdrant directly
-via named `RETRIEVERS` strategies (`dense`/`hybrid`/`hybrid_rerank`), never
-touches `src/ask.py`, and only writes to `data/eval/results.md`.
+The CLI query path (`src/ask.py`) itself still writes no state beyond the run
+log. The API path (`src/api/main.py`) adds the in-memory query cache above.
+The eval pipeline (`src/evaluation/`) remains separate and offline — it calls
+into `src/retrieval/hybrid.py` directly (§7.1) via named `RETRIEVERS`
+strategies (`dense`/`hybrid`/`hybrid_rerank`), never touches `src/ask.py` or
+`src/api/`, and only writes to `data/eval/results.md`.
 
 ---
 
@@ -591,8 +687,9 @@ touches `src/ask.py`, and only writes to `data/eval/results.md`.
 | ~~FastAPI service, Pydantic schema, correlation IDs, exact cache~~ | **done** — `src/api/` |
 | ~~Score-threshold refusal guardrail~~ | **done** — `REFUSAL_SCORE_CUTOFF=0.5`, `config/settings.py` |
 | ~~Provider abstraction~~ | **done** (Ollama only) — `src/providers/`. OpenAI concrete implementation deferred |
+| ~~Streamlit UI, citations, feedback → SQLite~~ | **done** — `ui/app.py`, `feedback.db` (§11) |
+| ~~`document_type` filtering~~ | **done** — also fixed a pre-existing BM25-branch filter gap, see §7.5 / §10 finding 13 |
 | OpenAI provider swap | Phase 5 |
-| Streamlit UI, citations, feedback → SQLite | Phase 4 |
 | LLM-as-judge (Faithfulness / Answer Relevance), Blue/Green alias swap | Phase 5 |
 | `date_effective` population | still open — manual or a later phase |
 | Second state (NY or TX), cross-state filtering | Phase 6 |
@@ -602,13 +699,13 @@ only (scraping/parsing remain offline CLI steps). Integration tests
 (`tests/`) run against real local Qdrant+Ollama, not mocks — one exception:
 the Qdrant-unreachable test uses `monkeypatch` rather than actually stopping
 the shared dev container mid-suite (verified manually once, separately, by
-actually stopping/restarting Qdrant — see session history). Cache/BM25/reranker
-staleness on re-index is a known, accepted limitation at this scale — see
-`docs/scaling-notes.md` §3/§8.
+actually stopping/restarting Qdrant — see `docs/next-session.md`). Cache/BM25/
+reranker staleness on re-index within a running server process is a known,
+accepted limitation at this scale — see `docs/scaling-notes.md` §3/§8.
 
 ---
 
-## 10. Known issues surfaced during Phase 1 (Phase 2 findings below)
+## 10. Known issues surfaced during Phase 1 (Phase 2/3 findings below)
 
 1. **Prompt-based refusal is unreliable.** A small model conflates "not stated
    verbatim" with "topic not covered" and over-refuses synthesis/comparison
@@ -643,7 +740,75 @@ staleness on re-index is a known, accepted limitation at this scale — see
    vector search**, not Qdrant's approximate HNSW index — the collection is
    far below the 10,000-vector `indexing_threshold`. See
    `docs/scaling-notes.md` §5.
-6. **CPU-only LLM inference.** No Ollama-usable GPU (Intel Arc iGPU
+9. **CPU-only LLM inference.** No Ollama-usable GPU (Intel Arc iGPU
    unsupported), so answers take tens of seconds. Mitigated with a small dev
    model (`llama3.2:3b`), `keep_alive=30m`, `num_predict=300`, and `k=3`. See
-   `Challenges and Learnings.md` #2. Real fix = OpenAI provider in Phase 3.
+   `Challenges and Learnings.md` #2. Real fix = the `OpenAIProvider`
+   implementation (Phase 5 — the abstraction itself landed in Phase 3, §7.6).
+
+### Phase 3 findings
+
+10. **The eval `Retriever` interface (doc-level) can't serve production
+    (needs chunk-level) directly.** `(query, k) -> [(doc_id, score)]` is fine
+    for Hit@K/Recall@K/MRR but `build_messages()`/`_sources()` need actual
+    chunk `content`. Resolved by extracting `src/retrieval/hybrid.py` as a
+    shared chunk-level core (§7.1) that both the eval harness and
+    `generate.py` call into — one implementation, not two copies that could
+    drift.
+11. **`qdrant_client` does NOT raise a builtin `ConnectionError` when
+    unreachable** — it raises its own `qdrant_client.http.exceptions.
+    ResponseHandlingException`. An early version of `/query`'s error handling
+    assumed the builtin type; caught only by actually stopping the local
+    Qdrant container and observing the real exception, not by reasoning about
+    it. Ollama's client, by contrast, *does* raise a builtin `ConnectionError`
+    directly — the two dependencies fail differently, both must be caught.
+12. **Score-threshold refusal is cheaper, not just more reliable, than
+    prompt-based refusal.** The old approach still paid for a full ~30-45s
+    CPU generation only to have the model decline. The guardrail (§7.2)
+    returns in ~4-12s (retrieval + rerank only) when it fires.
+
+### Phase 4 findings
+
+13. **The BM25 branch never honored the `state`/`document_type` filter** —
+    only the dense branch did, via Qdrant's own pre-filter. Invisible with a
+    single-state, single-doc-type corpus; caught while adding real
+    `document_type` filtering. Fixed in `hybrid_fused_chunks()` by filtering
+    the fused candidate list (both branches) before reranking. See §7.5.
+14. **`streamlit run ui/app.py` fails with `ModuleNotFoundError: No module
+    named 'config'`, even run from the repo root.** Streamlit executes the
+    script directly and only adds the script's own directory (`ui/`) to
+    `sys.path` — unlike `python -m src.ask`, which adds the repo root
+    automatically as part of module execution. Fixed with an explicit
+    `sys.path.insert(0, str(Path(__file__).resolve().parents[1]))` at the top
+    of `ui/app.py`, before the `config`/`src` imports. Worth remembering for
+    any future standalone script that isn't run via `python -m`.
+
+---
+
+## 11. UI service — `ui/app.py`
+
+**Run (with the API already up):** `streamlit run ui/app.py` — defaults to
+`http://localhost:8501`.
+
+Pure HTTP client of `src/api/main.py` (`requests`) — never imports
+`generate.py`/`retrieval/` internals. Two tabs (`st.tabs`), one file:
+
+- **Ask tab** — `st.form` (question + `document_type` selectbox) →
+  `POST /query`. Renders the answer via `st.markdown` (no
+  `unsafe_allow_html` — Streamlit's default escaping is the concrete answer
+  to "sanitize AI output before showing it in a browser": raw HTML/script in
+  the LLM's answer renders as inert text). Citations as clickable links with
+  `parent_headers` breadcrumbs; sidebar `st.expander` per `retrieved_chunks`
+  entry (chunk_id, score, full content); thumbs up/down → `POST /feedback`
+  with the answer/citations from `st.session_state`, gated so feedback can't
+  be submitted twice for the same `correlation_id` in one session.
+- **Admin tab** — `st.metric`s from `/admin/feedback_stats`; `st.dataframe`
+  from `/admin/recent_queries`, with a UI-side (not server-side) `flag`
+  column for refused/malformed/low-confidence rows — `LOW_CONFIDENCE_THRESHOLD
+  = REFUSAL_SCORE_CUTOFF + 0.2`, a display-only constant, not a new guardrail.
+
+**Architecture note:** every piece of state Phase 4 needed (feedback
+persistence, admin read access) was added to the API, not read/written
+directly by the UI from local files — see the Phase 4 plan's "Architecture
+decisions" for why (one writer, works unmodified if the API and UI ever run
+on different hosts).

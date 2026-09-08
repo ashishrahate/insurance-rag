@@ -31,21 +31,26 @@ def get_client() -> QdrantClient:
     )
 
 
-def _state_filter(state: str | None) -> Filter | None:
-    if state is None:
-        return None
-    return Filter(
-        must=[FieldCondition(key="state", match=MatchValue(value=state))]
-    )
+def _build_filter(state: str | None, document_type: str | None = None) -> Filter | None:
+    conditions = []
+    if state is not None:
+        conditions.append(FieldCondition(key="state", match=MatchValue(value=state)))
+    if document_type is not None:
+        conditions.append(
+            FieldCondition(key="document_type", match=MatchValue(value=document_type))
+        )
+    return Filter(must=conditions) if conditions else None
 
 
 def search(
     query: str,
     state: str | None = None,
+    document_type: str | None = None,
     limit: int = 5,
     sw: Stopwatch | None = None,
 ) -> list[ScoredPoint]:
-    """Embed `query` and run vector search, optionally restricted to one state.
+    """Embed `query` and run vector search, optionally restricted to one
+    state and/or document_type.
 
     Returns Qdrant scored points (each has `.score` and `.payload`).
 
@@ -60,7 +65,7 @@ def search(
         result = client.query_points(
             collection_name=CA_COLLECTION,
             query=vector,
-            query_filter=_state_filter(state),
+            query_filter=_build_filter(state, document_type),
             limit=limit,
             with_payload=True,
         )

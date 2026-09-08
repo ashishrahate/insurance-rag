@@ -43,6 +43,7 @@ def _sources(hits) -> list[dict]:
                 "title": p.get("title"),
                 "source_url": p.get("source_url"),
                 "date_issued": p.get("date_issued"),
+                "parent_headers": p.get("parent_headers", []),
                 "score": h.score,
             }
     return sorted(seen.values(), key=lambda s: s["score"], reverse=True)
@@ -53,12 +54,13 @@ def answer_question(
     state: str | None = "CA",
     k: int = RETRIEVE_K,
     json_mode: bool = False,
+    document_type: str | None = None,
 ) -> dict:
     sw = Stopwatch()
     cid = new_correlation_id()
 
     with sw.stage("retrieval"):
-        hits = retrieve_chunks(question, state=state, k=k)
+        hits = retrieve_chunks(question, state=state, k=k, document_type=document_type)
 
     if not hits:
         result = {

@@ -111,6 +111,10 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 RUN_ENV = os.getenv("RUN_ENV", "local-cpu")
 OBS_ENABLED = os.getenv("OBS_ENABLED", "1").lower() not in ("0", "false", "no")
 
+# --- UI & feedback (Phase 4) ---
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+FEEDBACK_DB_PATH = os.getenv("FEEDBACK_DB_PATH", str(PROJECT_ROOT / "feedback.db"))
+
 # --- Payload fields that get a Qdrant index: field name -> schema type ---
 PAYLOAD_INDEXES = {
     "state": "keyword",

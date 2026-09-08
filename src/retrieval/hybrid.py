@@ -95,10 +95,23 @@ def reciprocal_rank_fusion(*ranked_id_lists: list[str]) -> dict[str, float]:
 
 
 def hybrid_fused_chunks(
-    query: str, limit: int, state: str | None = "CA"
+    query: str,
+    limit: int,
+    state: str | None = "CA",
+    document_type: str | None = None,
 ) -> list[tuple[dict, float]]:
-    """Top `limit` chunk payloads from dense+BM25, RRF-fused, best first."""
-    dense_points = search(query, state=state, limit=limit)
+    """Top `limit` chunk payloads from dense+BM25, RRF-fused, best first.
+
+    `state`/`document_type` filter BOTH branches, not just the dense side's
+    Qdrant pre-filter. BM25 (`bm25_ranked_chunk_ids`) has no per-query notion
+    of a filtered collection -- it scores the WHOLE corpus every time (see
+    `bm25_corpus()`) -- so without this post-fusion filter, a chunk of the
+    wrong state/document_type could still win a slot via the BM25 branch even
+    though the dense branch correctly excluded it. Caught while adding
+    `document_type` filtering (Phase 4); pre-existing for `state` too, just
+    invisible until now since this corpus is CA-only.
+    """
+    dense_points = search(query, state=state, document_type=document_type, limit=limit)
     dense_chunk_ids = [p.payload["chunk_id"] for p in dense_points]
     bm25_chunk_ids = bm25_ranked_chunk_ids(query, limit)
 
@@ -107,7 +120,17 @@ def hybrid_fused_chunks(
     _, all_chunks = bm25_corpus()  # already-cached; free after the first call
     by_id = {c["chunk_id"]: c for c in all_chunks}
 
-    ranked_ids = sorted(fused, key=fused.get, reverse=True)[:limit]
+    def _matches(chunk: dict) -> bool:
+        if state is not None and chunk.get("state") != state:
+            return False
+        if document_type is not None and chunk.get("document_type") != document_type:
+            return False
+        return True
+
+    ranked_ids = [
+        cid for cid in sorted(fused, key=fused.get, reverse=True)
+        if cid in by_id and _matches(by_id[cid])
+    ][:limit]
     return [(by_id[cid], fused[cid]) for cid in ranked_ids]
 
 
@@ -123,7 +146,10 @@ def reranker() -> "CrossEncoder":
 
 
 def retrieve_chunks(
-    query: str, state: str | None = "CA", k: int = 3
+    query: str,
+    state: str | None = "CA",
+    k: int = 3,
+    document_type: str | None = None,
 ) -> list[ScoredChunk]:
     """Hybrid candidates, reranked, top-k chunks -- the production entry point.
 
@@ -132,7 +158,11 @@ def retrieve_chunks(
     to distinct documents for citation display. Multiple chunks from the same
     document in the top-k is fine -- more context for the LLM, not a bug.
     """
-    fused_chunks = [c for c, _ in hybrid_fused_chunks(query, CANDIDATE_POOL, state=state)]
+    fused_chunks = [
+        c for c, _ in hybrid_fused_chunks(
+            query, CANDIDATE_POOL, state=state, document_type=document_type
+        )
+    ]
     pairs = [(query, c["content"]) for c in fused_chunks]
     scores = reranker().predict(pairs)
 
