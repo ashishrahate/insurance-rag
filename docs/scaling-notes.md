@@ -354,6 +354,69 @@ rewrite of `scrape_ca_bulletins.py`'s internals.
 
 ---
 
+## 11. Prompt injection defense
+
+**What we did:** `src/generation/prompt.py` frames retrieved passages and
+the user's question as explicitly-delimited, explicitly-untrusted data —
+each wrapped in structural boundary tokens (`<<<PASSAGE_DATA_START/END>>>`,
+`<<<USER_QUESTION_START/END>>>`), with the system prompt instructing the
+model to treat any instruction-like text found inside those boundaries as
+ordinary quoted content, never a command. Those same tokens are stripped
+(replaced with `[filtered]`) out of both the question and retrieved chunk
+content before interpolation, so neither a user nor a compromised source
+document can forge a fake boundary and smuggle content past the framing.
+`MAX_QUESTION_CHARS=500` bounds worst-case prompt size, enforced twice
+(`QueryRequest`'s Pydantic `max_length` for a clean API 422; a truncate in
+`generate.py::answer_question()` for the CLI, which has no schema layer).
+
+**Fine at this scale because:** the corpus is 18 official CA DOI PDFs from
+one hardcoded, `%PDF`-magic-byte-validated domain — indirect injection via a
+compromised source document is a low-*probability* risk today, even though
+the architecture doesn't structurally prevent it. No tool-use/execution
+capability exists anywhere in this app, so the worst case of a successful
+injection is a wrong *displayed* answer, not a system compromise.
+
+**Breaks at scale because:** more sources (Phase 6, multi-state) means more
+domains to trust, and any user-facing deployment (vs. a single learning
+project) means direct injection attempts from real adversarial users, not
+just a hypothetical. Delimiter/framing defenses like this one are also not
+airtight — a sufficiently capable adversarial prompt can still sometimes get
+a model to ignore framing instructions, especially a small local model like
+`llama3.2:3b`, which has weaker instruction-following robustness than a
+frontier model. This is a genuinely unsolved problem industry-wide, not
+something any single technique fully closes.
+
+**What replaces it:**
+- A dedicated **input/output guardrail layer** — not just prompt framing,
+  but a real classifier or moderation pass on both the user's question
+  (before retrieval) and the model's answer (before it's returned), able to
+  flag or block attempts, not just hope the framing holds.
+- **Provider-level safety features** where available — e.g. a hosted
+  provider's built-in prompt-injection/jailbreak detection (a real
+  motivation for the Phase 5 `OpenAIProvider`, beyond just answer quality).
+- **Least-privilege by design, kept true as the app grows:** the current
+  "no execution capability" mitigation is only a mitigation as long as it
+  stays true — the moment this app gains any tool-use/agentic capability
+  (e.g. an `/ingest` triggered by natural language, not just an explicit
+  endpoint), injection stops being "worst case: wrong answer" and starts
+  being a real action-execution risk, and defenses need to escalate with it.
+
+**Senior system engineering decision:** treat this as the *first increment*
+of a dedicated **guardrails feature**, not the finished defense — the
+delimiter/framing approach here is cheap, real, and worth having, but a
+mature system needs guardrails as a first-class, testable layer: an
+eval-set-style corpus of known injection *attempts* (mirroring how
+`data/eval/ca_eval_set.json` already tests retrieval quality) that gets run
+through the pipeline on every change, asserting the framing holds and the
+refusal/citation behavior isn't hijacked — the same "measure the change,
+don't just ship it" discipline this project has applied to every retrieval
+change since Phase 2. Scope that as its own unit of work when it's time
+(a natural fit alongside the Phase 5 LLM-as-judge harness, which already
+needs an automated "score this generated answer" pass), not folded silently
+into whichever phase happens to be active.
+
+---
+
 *(Add new entries above this line as they come up — single Ollama instance
 vs. a hosted provider under concurrent load, FastAPI service concurrency,
 etc.)*

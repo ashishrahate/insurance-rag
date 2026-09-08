@@ -1,11 +1,15 @@
 """Pydantic request/response models for the FastAPI service."""
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from config.settings import RETRIEVE_K
+from config.settings import MAX_QUESTION_CHARS, RETRIEVE_K
 
 
 class QueryRequest(BaseModel):
-    question: str
+    # max_length rejects an over-length question with a clean 422 before it
+    # reaches generate.py -- part of prompt-injection defense-in-depth, see
+    # docs/scaling-notes.md. generate.py::answer_question() truncates instead
+    # of rejecting, as a second guard for the CLI path (no schema there).
+    question: str = Field(max_length=MAX_QUESTION_CHARS)
     state: str | None = "CA"
     document_type: str | None = None  # Phase 4: e.g. "bulletin"; None = no filter
     k: int = RETRIEVE_K

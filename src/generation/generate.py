@@ -8,9 +8,15 @@ import json
 
 from pydantic import BaseModel, ValidationError
 
-from config.settings import EMBED_MODEL, LLM_MODEL, REFUSAL_SCORE_CUTOFF, RETRIEVE_K
+from config.settings import (
+    EMBED_MODEL,
+    LLM_MODEL,
+    MAX_QUESTION_CHARS,
+    REFUSAL_SCORE_CUTOFF,
+    RETRIEVE_K,
+)
 from src.generation.prompt import build_messages
-from src.observability.logger import log_run, new_correlation_id
+from src.observability.logger import get_logger, log_run, new_correlation_id
 from src.observability.ollama_metrics import extract_ollama_metrics
 from src.observability.timing import Stopwatch
 from src.providers import get_provider
@@ -18,6 +24,8 @@ from src.retrieval.hybrid import retrieve_chunks
 
 REFUSAL_PREFIX = "The provided bulletins do not cover"
 REFUSAL_MESSAGE = f"{REFUSAL_PREFIX} this."
+
+_log = get_logger("generate")
 
 
 class LLMAnswer(BaseModel):
@@ -58,6 +66,18 @@ def answer_question(
 ) -> dict:
     sw = Stopwatch()
     cid = new_correlation_id()
+
+    if len(question) > MAX_QUESTION_CHARS:
+        # Defense-in-depth (docs/scaling-notes.md): the API rejects an
+        # over-length question outright (Pydantic max_length, a clean 422)
+        # before this is ever reached; the CLI has no such schema, so this is
+        # its only guard. Truncate rather than reject -- friendlier for an
+        # interactive CLI user, and still bounds worst-case prompt cost.
+        _log.warning(
+            "question truncated: %d chars > MAX_QUESTION_CHARS=%d (cid=%s)",
+            len(question), MAX_QUESTION_CHARS, cid,
+        )
+        question = question[:MAX_QUESTION_CHARS]
 
     with sw.stage("retrieval"):
         hits = retrieve_chunks(question, state=state, k=k, document_type=document_type)

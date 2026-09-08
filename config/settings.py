@@ -94,6 +94,15 @@ RERANK_MODEL = "BAAI/bge-reranker-base"
 # eval set grows.
 REFUSAL_SCORE_CUTOFF = float(os.getenv("REFUSAL_SCORE_CUTOFF", "0.5"))
 
+# Basic input hygiene, part of prompt-injection defense-in-depth (see
+# docs/scaling-notes.md). Generous for a real question (typical ones are
+# under 200 chars) but bounded -- caps worst-case embedding/rerank/prompt
+# cost from a pathologically long question, injected or not. Enforced twice:
+# QueryRequest (API) rejects with a clean 422 via Pydantic's max_length;
+# answer_question() (generate.py) truncates-and-logs as defense-in-depth for
+# the CLI path too, which has no schema validation of its own.
+MAX_QUESTION_CHARS = int(os.getenv("MAX_QUESTION_CHARS", "500"))
+
 # --- Evaluation (Phase 2) ---
 # Retrieval eval scores the top-EVAL_K distinct doc_ids per question. Kept equal
 # to RETRIEVE_K so the number measured is the number the app actually uses.
