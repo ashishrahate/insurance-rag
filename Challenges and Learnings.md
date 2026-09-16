@@ -12,6 +12,8 @@ Each entry: **Symptom → Root cause → Learning → Best solution → Applied 
 3. A fixed ~290 ms client-construction cost hid behind the LLM bottleneck — Phase 1 / 2
 4. The naive retrieval baseline scored high — what that does and doesn't tell us — Phase 2
 5. Header-aware chunking made retrieval *worse* on this corpus — Phase 2 (Change 1)
+6. LLM-as-judge scored correct refusals as answer failures, deflating the baseline — Phase 5
+7. A judge-quality test asserted a score threshold, then failed differently each run — Phase 5
 
 ---
 
@@ -435,3 +437,186 @@ Two independent effects, both negative here:
 - ✅ Measured both variants, recorded all rows in `data/eval/results.md`,
   re-indexed naive — baseline reproduced exactly (MRR 0.862).
 - ✅ Pipeline reverted to naive chunking; module retained for a structured corpus.
+
+---
+
+## 6. LLM-as-judge scored correct refusals as answer failures, deflating the baseline
+
+**Phase:** 5 (`src/evaluation/run_full_eval.py`, first real run)
+
+### Symptom
+
+The first 28-question full-pipeline baseline scored:
+
+| Hit@3 | Recall@3 | MRR | Faithfulness | Answer Relevance |
+|---|---|---|---|---|
+| 0.957 | 0.913 | 0.884 | **0.375** | 0.675 |
+
+Faithfulness looked badly broken — well below the 0.85 gate, and lower than a
+spot-check of the individual answers justified. Per-question detail showed
+why: q24–q28, all 5 out-of-scope questions, all correctly tripped the Phase 3
+score-threshold guardrail (`status: refused_guardrail`) and got the fixed
+refusal message — and all 5 were scored `faith=0.00 rel=0.00` by the judge.
+
+### Root cause
+
+The harness judged every question's `(question, answer)` pair uniformly,
+including the ones where "answer" was `"The provided bulletins do not cover
+this."` — a refusal, not a claim. Faithfulness asks "is every claim in the
+answer supported by the context?"; a refusal makes zero claims, so the judge
+had nothing to score faithful and defaulted low. Answer Relevance asks "does
+this address the question?"; the judge read "doesn't answer the question" as
+a relevance failure, when here it's the *correct* behavior — Phase 3's whole
+guardrail exists to refuse exactly these questions.
+
+5 of 28 questions (18%) zeroed out this way, pulling Faithfulness from what
+individual answers suggested was closer to ~0.5 down to 0.375, and Answer
+Relevance from ~0.92 down to 0.675 — a large, misleading swing from a small,
+structurally-guaranteed subset of the eval set (the out-of-scope questions
+exist specifically to *be* refused).
+
+### Learning
+
+1. **A guardrail's "correct" output (a refusal) is not the same shape of
+   thing as a substantive answer, and a judge prompt written for the latter
+   silently mis-scores the former.** Faithfulness/Answer Relevance are only
+   well-defined questions when the system actually attempted an answer.
+2. **This is the same class of mistake as Challenge #1's citation-decoupling
+   bug** — treating a refusal as if it were an ordinary answer, just one
+   layer up the stack (there it was retrieved-but-uncited chunks printed as
+   sources; here it's a refusal judged as if it were a claim). The fix is
+   the same shape too: branch on `status`, don't run every row through the
+   same code path.
+3. **Aggregate metrics over a mixed eval set (in-scope + deliberately
+   out-of-scope questions) need the same in-scope/out-of-scope split for
+   *every* metric, not just the retrieval ones.** `retrieval_eval.py` already
+   excludes out-of-scope questions from Hit@K/Recall@K/MRR for exactly this
+   reason (Challenge #4); the new judge metrics needed the same treatment
+   and didn't get it on the first pass.
+4. **Refusal correctness is a different, already-measured thing.** Whether
+   the guardrail *should* have refused is what `REFUSAL_SCORE_CUTOFF` and the
+   in-scope/out-of-scope top-1 score separation (Challenge #4, point 3)
+   already test. The judge's job is answer quality *given that the system
+   chose to answer* — conflating the two double-counts (and mis-scores) the
+   same behavior twice.
+5. **Running the real 28-question set (not a 3-question smoke test) is what
+   surfaced this.** The smoke test used only in-scope questions, so the bug
+   was invisible until the full corpus, with its intentional out-of-scope
+   mix, actually ran.
+
+### Best solution
+
+- Only judge rows where the pipeline actually produced a substantive answer
+  (`status == "answered"`) — skip Faithfulness/Answer Relevance entirely for
+  `refused_guardrail` / `refused` / `no_results` / `malformed_llm_output`,
+  same as `retrieval_eval.py` already skips retrieval metrics for
+  out-of-scope questions.
+- Report skipped rows distinctly from judge failures in `--show-questions`
+  output (`--` for "not applicable, by design" vs `err` for "judge call
+  actually failed") — collapsing those two into one blank would hide a real
+  `judge_client` outage behind expected skips.
+- Keep `n_judge_errors` counting only real failures on rows that *were*
+  judged, so it stays a trustworthy signal for "is the judge service
+  healthy," not inflated by intentional skips.
+
+### Applied so far
+
+- ✅ `run_full_eval.py`: judge calls gated on `status == "answered"`.
+- ✅ Aggregate `faithfulness`/`answer_relevance` means computed only over
+  judged rows (`statistics.mean` over non-`None` scores already did this
+  correctly once the `None`s were assigned right).
+- ✅ Corrected baseline re-run and recorded (`data/eval/answer_eval_results.md`):
+  Faithfulness 0.518, Answer Relevance 0.918 — still a real Faithfulness
+  **gate FAIL** against 0.85, but now an honest number reflecting
+  `llama3.2:3b`'s grounding quality on substantive answers, not an artifact
+  of the eval set's out-of-scope mix.
+- ⏳ The remaining Faithfulness gap is expected to close (or at least become
+  measurable against a better model) once `OpenAIProvider` lands — Phase 5
+  task 5.
+
+---
+
+## 7. A judge-quality test asserted a score threshold, then failed differently each run
+
+**Phase:** 5 (`tests/test_judge_service.py`, first real test run)
+
+### Symptom
+
+Writing pytest coverage for the judge service, a clearly-grounded
+faithfulness case (`answer` restates exactly what `context` says) was
+asserted at `score >= 0.7`. First run: scored `0.5`, test failed. Lowered
+the bar to `>= 0.5` on the reasoning that `llama3.2:3b` is "unconfident but
+correct." Re-ran the identical test, same input: scored `0.0` this time.
+Same case, same code, same prompt — a different number every run.
+
+### Root cause
+
+`llama3.2:3b`'s chat call has no fixed seed/temperature=0 set (`ollama.chat`
+via `OllamaProvider`, no sampling override), so it's genuinely stochastic.
+A small model's judgment on a *directionally clear* case can still land
+anywhere the sampling distribution puts weight — for this model, apparently
+including "confidently correct" (0.5) and "confidently wrong" (0.0) on
+back-to-back calls with identical input. Asserting a fixed threshold
+against that output isn't testing the judge service's code (routing, prompt
+construction, JSON parsing, HTTP contract) — it's testing what a specific
+weak, unseeded model happened to sample this run.
+
+### Learning
+
+1. **A test on a stochastic LLM output needs to assert what's actually
+   deterministic: the contract, not the content.** Status code, response
+   schema (`score` is a valid float in `[0, 1]`, `rationale` is non-empty),
+   and error handling are guaranteed by the code and worth testing hard. A
+   specific score on a specific input is *not* guaranteed by the code — it's
+   a property of the model's sample that run — and asserting it produces a
+   test that is flaky by construction, not by accident.
+2. **This directly explains Challenge #6's "same model, same question,
+   0.518 baseline may not replicate exactly" caveat and the earlier
+   full-eval observation that per-question scores shifted between two
+   28-question runs (e.g. one question's faithfulness went 1.00 -> 0.00).**
+   Same root cause, three places it showed up: baseline reproducibility, a
+   raw full-eval rerun, and now a unit test. It's one finding, not three.
+3. **The failure direction wasn't symmetric, and that asymmetry is itself
+   informative, not noise.** A clearly *wrong* case (contradicting context,
+   off-topic answer) scored `<= 0.3` reliably across repeated runs; a
+   clearly *right* case swung `0.0` to `0.5` across runs. This is a real,
+   measurable property of this specific weak judge model — it's more
+   consistent about rejecting than about confidently affirming — not
+   something to paper over with a wider tolerance band, and not something a
+   `>= 0.5` threshold would have caught either (it happened to fail anyway,
+   just later).
+4. **Widening the threshold is treating the symptom.** The instinct after
+   the first failure was "lower the bar until it passes" — that's fitting
+   the test to one observed sample, not fixing what the test should
+   actually guarantee. The real fix was recognizing which assertions were
+   testable at all given the input (code contract: always; judge
+   *direction*: only where empirically stable — here, the "low" side).
+
+### Best solution
+
+- Split assertions by what's actually stable: `_assert_valid_score_shape()`
+  (score range + non-empty rationale) on every case, a directional score
+  assertion (`<= 0.3`) only on the cases that held reliably across repeated
+  manual runs (contradicting context, off-topic answer) — dropped entirely
+  for the "should be high" cases rather than chasing a threshold.
+- Document the asymmetry and the reasoning inline in the test file itself,
+  not just here — so a future reader doesn't "fix" the missing high-score
+  assertion back in without knowing it was removed on purpose.
+- **The real quality signal for judge output belongs in the eval harness**
+  (`run_full_eval.py`'s recorded, human-reviewed baseline rows in
+  `data/eval/answer_eval_results.md`), not in `pytest`. Tests should prove
+  the plumbing works every time; the eval harness is where "is this
+  actually a good judge" gets asked, against a real corpus, with a human
+  reading the numbers — exactly the role Hit@K/MRR already play for
+  retrieval (Challenge #4).
+
+### Applied so far
+
+- ✅ `tests/test_judge_service.py`: shape-only assertions for "should score
+  high" cases, directional (`<= 0.3`) assertions kept only where repeated
+  manual runs showed they hold.
+- ✅ `tests/test_run_full_eval.py`'s smoke test follows the same principle —
+  asserts score *range* and *presence* per row, never a specific value.
+- ⏳ An independent (non-same-model) judge, and/or a larger local model,
+  are the actual fixes for the underlying judge-quality gap this surfaced —
+  already tracked (Challenge #6's "Applied so far", `JUDGE_LLM_PROVIDER`).

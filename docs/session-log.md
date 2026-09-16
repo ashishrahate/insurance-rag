@@ -59,3 +59,253 @@ Appended by `scripts/stop.ps1` at the end of each working session.
   - `?? src/observability/ollama_metrics.py`
   - `?? src/observability/report.py`
   - `?? src/observability/timing.py`
+
+## 2026-09-07 20:42
+- **Note:** testing new stop_by_cmdline logic
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: 53 points
+- Commits this session (7):
+  - `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+  - `1813b00 phase 4 : streamlit UI, APi entension`
+  - `b50d2e7 phase 3 retrieval refactor, provider abstraction, Refusal Guardrail, FastAPI service`
+  - `0e49c33 phase 2 complete: ran the 9 round sweep eval`
+  - `aef6cc3 phase 2 task 2: Hybrid BM25 + RRF implemented and tested`
+  - `34dafc1 phase 2 change 1, measured and settled, back from header aware chunking enbedding`
+  - `8ed7875 Observability for CPU timing`
+- Uncommitted (6):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:42
+- **Note:** testing idempotency - nothing should be running
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:43
+- **Note:** third run - confirming true idempotent no-op
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:44
+- **Note:** verifying self-match fix, run 1
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:44
+- **Note:** run 2
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:44
+- **Note:** run 3
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:45
+- **Note:** final verification - real single API instance
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: 53 points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:46
+- **Note:** final settle check
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:48
+- **Note:** confirming reverted behavior
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:48
+- **Note:** confirming reverted behavior (ps1)
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session (10):
+  - `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+  - `1813b00 phase 4 : streamlit UI, APi entension`
+  - `b50d2e7 phase 3 retrieval refactor, provider abstraction, Refusal Guardrail, FastAPI service`
+  - `0e49c33 phase 2 complete: ran the 9 round sweep eval`
+  - `aef6cc3 phase 2 task 2: Hybrid BM25 + RRF implemented and tested`
+  - `34dafc1 phase 2 change 1, measured and settled, back from header aware chunking enbedding`
+  - `8ed7875 Observability for CPU timing`
+  - `24fd183 added scripts for starting and stopping environment dependencies`
+  - `dad91f0 started using smaller 3b  model for faster inference`
+  - `8c64c1c Phase 1 Complete : Naive RAG Implemented`
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-07 20:49
+- **Note:** Phase 3 (FastAPI: /query,/ingest,/healthcheck,/feedback, guardrail, provider abstraction) + Phase 4 (Streamlit UI, feedback.db, admin endpoints) + prompt-injection defense increment 1 + start/stop.sh docs
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (7):
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+
+## 2026-09-15 23:44
+- **Note:** Phase 5 part 1 (judge service, full harness, provider decoupling) + pre-Phase-6 hardening plan complete: tests added, CA corpus grown 19->37 docs / 28->61 eval Qs, both harnesses re-run, Colab GPU plan documented
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: 129 points
+- Commits this session: none
+- Uncommitted (33):
+  - `M "Challenges and Learnings.md"`
+  - `M config/settings.py`
+  - `M data/eval/ca_eval_set.json`
+  - `M data/eval/results.md`
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M requirements.txt`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+  - `M src/generation/generate.py`
+  - `M src/ingestion/embed.py`
+  - `M src/observability/__init__.py`
+  - `M src/observability/ollama_metrics.py`
+  - `M src/providers/__init__.py`
+  - `M src/providers/base.py`
+  - `M src/providers/ollama_provider.py`
+  - `M tests/conftest.py`
+  - `?? .env.example`
+  - `?? data/eval/answer_eval_results.md`
+  - `?? docs/colab-gpu-plan.md`
+  - `?? src/evaluation/judge_client.py`
+  - `?? src/evaluation/run_full_eval.py`
+  - `?? src/judge_service/__init__.py`
+  - `?? src/judge_service/main.py`
+  - `?? src/judge_service/prompts.py`
+  - `?? src/judge_service/schemas.py`
+  - `?? src/providers/openai_provider.py`
+  - `?? tests/test_judge_service.py`
+  - `?? tests/test_providers.py`
+  - `?? tests/test_run_full_eval.py`
+
+## 2026-09-15 23:48
+- **Note:** final full shutdown - closing Ollama app and Docker Desktop
+- Branch `main`, HEAD `556557d phase 4: explicit system prompt, delimiter forgery, max question limit`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session: none
+- Uncommitted (33):
+  - `M "Challenges and Learnings.md"`
+  - `M config/settings.py`
+  - `M data/eval/ca_eval_set.json`
+  - `M data/eval/results.md`
+  - `M docs/next-session.md`
+  - `M docs/pipeline.md`
+  - `M docs/session-log.md`
+  - `M requirements.txt`
+  - `M scripts/start.ps1`
+  - `M scripts/start.sh`
+  - `M scripts/stop.ps1`
+  - `M scripts/stop.sh`
+  - `M src/generation/generate.py`
+  - `M src/ingestion/embed.py`
+  - `M src/observability/__init__.py`
+  - `M src/observability/ollama_metrics.py`
+  - `M src/providers/__init__.py`
+  - `M src/providers/base.py`
+  - `M src/providers/ollama_provider.py`
+  - `M tests/conftest.py`
+  - `?? .env.example`
+  - `?? data/eval/answer_eval_results.md`
+  - `?? docs/colab-gpu-plan.md`
+  - `?? src/evaluation/judge_client.py`
+  - `?? src/evaluation/run_full_eval.py`
+  - `?? src/judge_service/__init__.py`
+  - `?? src/judge_service/main.py`
+  - `?? src/judge_service/prompts.py`
+  - `?? src/judge_service/schemas.py`
+  - `?? src/providers/openai_provider.py`
+  - `?? tests/test_judge_service.py`
+  - `?? tests/test_providers.py`
+  - `?? tests/test_run_full_eval.py`

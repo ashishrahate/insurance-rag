@@ -111,3 +111,8 @@ fi
 echo
 echo "Ready. If your shell isn't in the venv yet:  source venv/Scripts/activate"
 echo
+echo "Infra dependencies only -- API and UI run in their own foreground"
+echo "terminals (so you keep --reload / live logs), start.sh doesn't launch them:"
+echo "    uvicorn src.api.main:app --reload    # http://localhost:8000"
+echo "    streamlit run ui/app.py               # http://localhost:8501 (needs API up)"
+echo

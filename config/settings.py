@@ -1,10 +1,19 @@
 """Central configuration. Every other module imports its settings from here
 so connection details, collection names, and model IDs are defined once.
 
-Values can be overridden with environment variables of the same name.
+Values can be overridden with environment variables of the same name. A
+local `.env` file (gitignored, see `.env.example`) is loaded first if
+present -- this is where secrets like OPENAI_API_KEY belong: never typed
+into a shared terminal history or committed, and picked up automatically by
+every `python`/`uvicorn`/`pytest` invocation without exporting anything by
+hand each session.
 """
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- Paths ---
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -53,11 +62,32 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 EMBED_DIM = 768  # nomic-embed-text output dimensionality
 
 # --- Provider abstraction (Phase 3) ---
-# Selects the backend behind src/providers/get_provider(). Only "ollama" is
-# implemented; "openai" lands in Phase 5 as a new class + this one flag flip,
-# not a rewrite of embed.py/generate.py (both already call through the
-# provider interface).
+# Two independent axes, each with its own env var -- embed.py and
+# generate.py never change, only which provider a given axis resolves to:
+#   EMBED_PROVIDER -- what embeds documents at ingest time AND queries at
+#     search time (these two MUST match: comparing a query vector to stored
+#     vectors only works if both came from the same model/dimensionality).
+#   LLM_PROVIDER -- what generates the answer from retrieved context.
+# Decoupled on purpose: swapping the *generation* model (e.g. to compare
+# gpt-4o-mini's answer quality against the llama3.2:3b baseline) is then a
+# free comparison against the existing collection -- no re-embedding, no new
+# collection, no OpenAI embedding spend, since retrieval doesn't change at
+# all. Only changing EMBED_PROVIDER needs a new collection (see
+# OPENAI_EMBED_DIM below) -- that's a deliberate, separate decision (Phase 5
+# task 4/6), not a side effect of testing a different LLM.
+EMBED_PROVIDER = os.getenv("EMBED_PROVIDER", "ollama")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+
+# --- OpenAI provider (Phase 5 task 5) ---
+# text-embedding-3-small outputs 1536-dim vectors, not nomic-embed-text's 768
+# -- switching LLM_PROVIDER to "openai" changes both chat and embedding, so
+# it needs its own collection re-ingested at the right vector size, not a
+# same-collection swap. See docs/pipeline.md / Blue/Green (Phase 5 task 4)
+# for where that collection comes from.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
+OPENAI_EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
+OPENAI_EMBED_DIM = 1536
 
 # --- LLM (Ollama) ---
 # Dev model is deliberately small: this machine has no Ollama-usable GPU, so
@@ -109,6 +139,25 @@ MAX_QUESTION_CHARS = int(os.getenv("MAX_QUESTION_CHARS", "500"))
 EVAL_SET_FILE = EVAL_DIR / "ca_eval_set.json"
 EVAL_RESULTS_FILE = EVAL_DIR / "results.md"
 EVAL_K = 3
+
+# --- LLM-as-judge (Phase 5) ---
+# The judge runs as its own service (src/judge_service/) so which model judges
+# is independently configurable from LLM_PROVIDER/LLM_MODEL above -- swapping
+# the judge (e.g. to a frontier model, once the OpenAI provider lands) never
+# touches the generation path it's scoring. Same ollama/llama3.2:3b default as
+# generation for now, since only one provider exists yet.
+JUDGE_LLM_PROVIDER = os.getenv("JUDGE_LLM_PROVIDER", "ollama")
+JUDGE_LLM_MODEL = os.getenv("JUDGE_LLM_MODEL", "llama3.2:3b")
+JUDGE_SERVICE_URL = os.getenv("JUDGE_SERVICE_URL", "http://localhost:8100")
+
+ANSWER_EVAL_RESULTS_FILE = EVAL_DIR / "answer_eval_results.md"
+
+# Quality gates (Phase 5): tuned against the eval set as it's run, never
+# hardcoded from a guide -- same convention as REFUSAL_SCORE_CUTOFF above.
+# Starting values are the roadmap's stated targets; revisit once a baseline
+# run exists to tune against.
+HIT_AT_K_GATE = float(os.getenv("HIT_AT_K_GATE", "0.80"))
+FAITHFULNESS_GATE = float(os.getenv("FAITHFULNESS_GATE", "0.85"))
 
 # --- Observability ---
 # Structured run records land in logs/runs.jsonl, one JSON line per query.

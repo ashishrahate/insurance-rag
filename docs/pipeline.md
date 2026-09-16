@@ -11,11 +11,13 @@ HTTP — never the pipeline directly). A score-threshold refusal guardrail
 (`REFUSAL_SCORE_CUTOFF=0.5`) skips the LLM call entirely on out-of-scope
 questions, `src/providers/` abstracts the LLM/embedding backend, and Phase 4
 adds durable feedback storage (`feedback.db`, SQLite) plus two admin-facing
-API endpoints.
+API endpoints. Prompts (§7.3) now also carry a first-increment
+prompt-injection defense (structural delimiters + framing + forgery
+stripping) added the same session, ahead of Phase 5.
 
 See `data/eval/results.md` / `hybrid_rerank_scores.json` for the retrieval
 numbers, and `docs/scaling-notes.md` for what changes at production scale
-(in-memory cache, process-lifetime singletons, etc.).
+(in-memory cache, process-lifetime singletons, prompt-injection defense §11, etc.).
 
 This document describes **exactly what the code does today**, module by module.
 It is a snapshot; when a phase changes the flow, update this file.
@@ -540,9 +542,21 @@ questions the guardrail doesn't catch.
 - `JSON_SYSTEM_PROMPT` (API, `json_mode=True`) — same rules, plus: respond
   with ONLY `{"answer": "<string>"}`, no markdown fences, no other text.
 
+Both prompts also carry a **prompt-injection defense** clause (added after
+Phase 4): passages and the question are structurally delimited
+(`<<<PASSAGE_DATA_START/END>>>`, `<<<USER_QUESTION_START/END>>>`) and the
+model is told anything inside those boundaries is untrusted quoted data,
+never an instruction — see `docs/scaling-notes.md` §11 for the full threat
+model and what this does/doesn't defend against.
+
 `format_context(hits)` renders each hit as
-`[i] Bulletin <num> - <title>\nSource: <url>\n<content>`, unchanged from
-Phase 1.
+`[i] Bulletin <num> - <title>\nSource: <url>\n<<<PASSAGE_DATA_START>>>\n<content>\n<<<PASSAGE_DATA_END>>>`
+— delimiter-wrapped since the injection-defense change above (was unwrapped
+through Phase 3). `_strip_delimiter_tokens()` runs on both the question and
+each chunk's content before interpolation, so neither can forge a fake
+boundary using the literal delimiter tokens. `MAX_QUESTION_CHARS=500` caps
+question length (enforced in `QueryRequest` for the API, truncated-and-logged
+in `generate.py::answer_question()` for the CLI).
 
 ### 7.4 Generation — `src/generation/generate.py`
 
@@ -782,6 +796,14 @@ accepted limitation at this scale — see `docs/scaling-notes.md` §3/§8.
     `sys.path.insert(0, str(Path(__file__).resolve().parents[1]))` at the top
     of `ui/app.py`, before the `config`/`src` imports. Worth remembering for
     any future standalone script that isn't run via `python -m`.
+15. **Retrieved-chunk content and user questions were interpolated into the
+    LLM prompt with no boundary marking them as untrusted data** — a real
+    (if currently low-probability, given the trusted single-domain corpus)
+    prompt-injection surface, both indirect (a source document) and direct
+    (the user's own question). Addressed with structural delimiter tokens +
+    explicit framing + forgery stripping in `src/generation/prompt.py` (§7.3)
+    — explicitly **increment 1**, not a complete defense. Full threat model
+    and what's still open: `docs/scaling-notes.md` §11.
 
 ---
 

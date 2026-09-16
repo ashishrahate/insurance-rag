@@ -21,3 +21,5 @@ One row per configuration. Baseline first; each later row is a single measured c
 | 2026-09-07 22:33 | Change 4 sweep: 500/25, hybrid_rerank | hybrid_rerank | 3 | 500/25 | 1.000 | 0.957 | 0.848 | 0.945 | 0.043 |
 | 2026-09-07 22:36 | Change 4 sweep: 500/50, hybrid_rerank | hybrid_rerank | 3 | 500/50 | 1.000 | 0.957 | 0.877 | 0.963 | 0.042 |
 | 2026-09-07 22:39 | post-sweep restore: back to default 300/50, hybrid_rerank | hybrid_rerank | 3 | 300/50 | 0.957 | 0.913 | 0.884 | 0.965 | 0.100 |
+| 2026-09-16 02:25 | grown CA corpus (37 docs), existing 28 Qs only | hybrid_rerank | 3 | 300/50 | 1.000 | 1.000 | 0.949 | 0.987 | 0.152 |
+| 2026-09-16 02:33 | grown CA corpus (37 docs, 61 Qs) | hybrid_rerank | 3 | 300/50 | 0.929 | 0.929 | 0.878 | 0.958 | 0.152 |

@@ -30,6 +30,37 @@ done
 
 info() { printf '  %s\n' "$1"; }
 
+# --- API/UI auto-stop: built, tested, and working -- disabled by request. ---
+# Kept here (commented) rather than deleted in case it's wanted again later.
+# Kills any process whose command line contains BOTH substrings (never just
+# a port or a process name like "python.exe" -- too broad, could hit VS
+# Code's language server, Jupyter, anything). Requiring two specific
+# substrings together is precise enough that nothing else would ever match.
+# Safe to call every time: finds nothing and no-ops if already stopped.
+#
+# stop_by_cmdline() {
+#   local pat1="$1" pat2="$2" label="$3"
+#   local pids
+#   # NOTE: this powershell.exe invocation's own command line necessarily
+#   # contains "$pat1"/"$pat2" (it has to, to search for them) -- Get-CimInstance
+#   # enumerates ALL processes including itself, so without excluding $PID
+#   # (its own automatic variable) it always self-matches, reporting a false
+#   # "stopped" every run even with nothing actually running. Caught by
+#   # actually re-running this script three times and noticing it never
+#   # settled to "not running" -- verify, don't assume.
+#   pids="$(powershell.exe -NoProfile -Command \
+#     "(Get-CimInstance Win32_Process | Where-Object { \$_.ProcessId -ne \$PID -and \$_.CommandLine -like '*${pat1}*' -and \$_.CommandLine -like '*${pat2}*' }).ProcessId" \
+#     2>/dev/null | tr -d '\r' | grep -E '^[0-9]+$')"
+#   if [ -n "$pids" ]; then
+#     for pid in $pids; do
+#       powershell.exe -NoProfile -Command "Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue" >/dev/null 2>&1
+#     done
+#     info "stopped $label (pid: $(echo "$pids" | tr '\n' ' '))"
+#   else
+#     info "$label not running"
+#   fi
+# }
+
 echo
 echo "=== insurance-rag :: stop ==="
 
@@ -75,6 +106,11 @@ mkdir -p "$(dirname "$LOG")"
 info "Logged to $LOG  (${#commits[@]} commit(s), ${#changed[@]} uncommitted)"
 
 # 3. Stop dependencies -----------------------------------------------
+# stop_by_cmdline "uvicorn" "src.api.main" "API (uvicorn)"
+# stop_by_cmdline "streamlit" "run ui" "UI (streamlit)"
+info "Reminder: close the API/UI dev servers yourself (Ctrl+C in their terminals) --"
+info "this script only stops Qdrant/Ollama, not uvicorn/streamlit."
+
 info "Stopping Qdrant container..."
 docker compose stop >/dev/null 2>&1
 

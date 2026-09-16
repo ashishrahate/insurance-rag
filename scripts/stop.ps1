@@ -23,6 +23,35 @@ Set-Location $RepoRoot
 
 function Info($m) { Write-Host "  $m" -ForegroundColor Cyan }
 
+<#
+API/UI auto-stop: built, tested, and working -- disabled by request.
+Kept here (commented) rather than deleted in case it's wanted again later.
+Kills any process whose command line contains BOTH substrings (never just a
+port or a process name like "python.exe" -- too broad, could hit VS Code's
+language server, Jupyter, anything else). Requiring two specific
+substrings together is precise enough that nothing else would ever match.
+Safe to call every time: finds nothing and no-ops if already stopped.
+
+function Stop-ByCmdline($Pattern1, $Pattern2, $Label) {
+  # Exclude our own PID: this function's Where-Object clause necessarily
+  # contains $Pattern1/$Pattern2 as literal text (that's how it searches for
+  # them), and Get-CimInstance enumerates every process including this one
+  # -- without this exclusion it always self-matches. Caught by actually
+  # re-running scripts/stop.sh three times and noticing it never settled to
+  # "not running" -- verify, don't assume.
+  $procs = Get-CimInstance Win32_Process | Where-Object {
+    $_.ProcessId -ne $PID -and $_.CommandLine -like "*$Pattern1*" -and $_.CommandLine -like "*$Pattern2*"
+  }
+  if ($procs) {
+    $ids = $procs | ForEach-Object { $_.ProcessId }
+    $procs | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Info "stopped $Label (pid: $($ids -join ' '))"
+  } else {
+    Info "$Label not running"
+  }
+}
+#>
+
 $LogFile    = Join-Path $RepoRoot 'docs\session-log.md'
 $Qdrant     = 'http://localhost:6333'
 $Collection = 'insurance_ca_v1'
@@ -84,6 +113,11 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)   # no BOM
 Info "Logged to docs/session-log.md  ($($sessionCommits.Count) commit(s), $($changed.Count) uncommitted)"
 
 # 3. Stop dependencies ----------------------------------------------------
+# Stop-ByCmdline "uvicorn" "src.api.main" "API (uvicorn)"
+# Stop-ByCmdline "streamlit" "run ui" "UI (streamlit)"
+Info "Reminder: close the API/UI dev servers yourself (Ctrl+C in their terminals) --"
+Info "this script only stops Qdrant/Ollama, not uvicorn/streamlit."
+
 Info "Stopping Qdrant container..."
 docker compose stop 2>$null | Out-Null
 

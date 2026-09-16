@@ -17,9 +17,9 @@ from config.settings import (
 )
 from src.generation.prompt import build_messages
 from src.observability.logger import get_logger, log_run, new_correlation_id
-from src.observability.ollama_metrics import extract_ollama_metrics
+from src.observability.ollama_metrics import extract_metrics
 from src.observability.timing import Stopwatch
-from src.providers import get_provider
+from src.providers import get_llm_provider
 from src.retrieval.hybrid import retrieve_chunks
 
 REFUSAL_PREFIX = "The provided bulletins do not cover"
@@ -124,9 +124,9 @@ def answer_question(
         messages = build_messages(question, hits, json_mode=json_mode)
 
     with sw.stage("llm"):
-        resp = get_provider().chat(messages, json_mode=json_mode)
+        resp = get_llm_provider().chat(messages, json_mode=json_mode)
 
-    raw_content = resp["message"]["content"].strip()
+    raw_content = resp["content"].strip()
     parse_error = None
     if json_mode:
         try:
@@ -141,8 +141,8 @@ def answer_question(
                 )},
             ]
             with sw.stage("llm_retry"):
-                resp = get_provider().chat(retry_messages, json_mode=True)
-            raw_content = resp["message"]["content"].strip()
+                resp = get_llm_provider().chat(retry_messages, json_mode=True)
+            raw_content = resp["content"].strip()
             try:
                 answer = _parse_json_answer(raw_content)
             except (json.JSONDecodeError, ValidationError) as e:
@@ -169,7 +169,7 @@ def answer_question(
         "top_score": round(hits[0].score, 4),
         "answer_chars": len(answer),
         **({"parse_error": parse_error} if parse_error else {}),
-        **extract_ollama_metrics(resp),
+        **extract_metrics(resp),
         **sw.snapshot(),
     }
 

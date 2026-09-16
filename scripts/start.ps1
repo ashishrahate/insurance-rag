@@ -116,3 +116,8 @@ try {
 Write-Host ""
 Write-Host "Ready. If your shell isn't in the venv yet:  venv\Scripts\activate" -ForegroundColor White
 Write-Host ""
+Write-Host "Infra dependencies only -- API and UI run in their own foreground" -ForegroundColor White
+Write-Host "terminals (so you keep --reload / live logs), start.ps1 doesn't launch them:" -ForegroundColor White
+Write-Host "    uvicorn src.api.main:app --reload    # http://localhost:8000" -ForegroundColor White
+Write-Host "    streamlit run ui/app.py               # http://localhost:8501 (needs API up)" -ForegroundColor White
+Write-Host ""
