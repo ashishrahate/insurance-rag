@@ -14,6 +14,7 @@ Each entry: **Symptom → Root cause → Learning → Best solution → Applied 
 5. Header-aware chunking made retrieval *worse* on this corpus — Phase 2 (Change 1)
 6. LLM-as-judge scored correct refusals as answer failures, deflating the baseline — Phase 5
 7. A judge-quality test asserted a score threshold, then failed differently each run — Phase 5
+8. Two-model Ollama swap thrashing on a single GPU produced judge timeouts and 500s — Phase 5 (Colab GPU eval)
 
 ---
 
@@ -620,3 +621,129 @@ weak, unseeded model happened to sample this run.
 - ⏳ An independent (non-same-model) judge, and/or a larger local model,
   are the actual fixes for the underlying judge-quality gap this surfaced —
   already tracked (Challenge #6's "Applied so far", `JUDGE_LLM_PROVIDER`).
+
+---
+
+## 8. Two-model Ollama swap thrashing on a single GPU produced judge timeouts and 500s
+
+**Phase:** 5 (Colab GPU eval — `docs/colab-gpu-plan.md`, run: `llama3.2:3b`
+generation, `gemma3:12b` judge, both via the same local Ollama instance on a
+T4)
+
+### Symptom
+
+`run_full_eval.py` logged a steady stream of judge-call failures throughout
+the run, roughly one every 30-90s, alternating between two error shapes:
+
+```
+judge call failed (criterion=faithfulness): HTTPConnectionPool(host='localhost',
+  port=8100): Read timed out. (read timeout=30)
+judge call failed (criterion=answer_relevance): 500 Server Error: Internal
+  Server Error for url: http://localhost:8100/judge
+```
+
+The run didn't crash — `judge_client.py`'s one-try/except-per-call design
+(Challenge #7's "Applied so far") caught each failure and returned `None`,
+and `run_full_eval.py`'s `_mean_scored()` already excludes `None` from the
+aggregate — but a high enough failure rate means the final Faithfulness /
+Answer Relevance numbers are computed over a small, non-random surviving
+subset, not the full 61 questions.
+
+### Root cause
+
+Two different-sized models sharing one GPU's VRAM, needed back-to-back on
+every single question:
+
+- Generation: `llama3.2:3b` (~2-3GB at Q4)
+- Judging: `gemma3:12b` (~8GB at Q4)
+- Also GPU-resident throughout: `bge-reranker-base` via `sentence-transformers`
+  (~2GB)
+
+On a T4 (16GB), that combination is tight enough that Ollama likely can't
+keep both LLMs loaded simultaneously — it evicts one to load the other on
+each question's generation-then-judge cycle. Evict+reload costs real time by
+itself (plausibly explaining the 30-90s per-call cadence observed), and under
+enough memory pressure Ollama can error outright rather than just being slow
+— plausibly explaining the interleaved 500s. Not confirmed with `nvidia-smi`/
+`ollama ps` mid-run (the run was left to finish rather than interrupted to
+debug live — see "Applied so far"), so this is the best-supported hypothesis
+from the evidence available, not a verified root cause.
+
+A second, independent, definitely-real bug compounded this:
+`judge_client.py` hardcoded `_TIMEOUT_S = 30` with no override. 30s was sized
+for the local `llama3.2:3b` judge baseline; a 12B judge model doing JSON-mode
+generation (plus `main.py`'s one corrective retry on malformed JSON, which
+doubles the call) can legitimately need longer even without swap thrashing.
+
+### Learning
+
+1. **Running two different-sized models through one shared local LLM
+   runtime is not free, even when each model individually fits in VRAM** —
+   the *sum*, plus whatever else shares the GPU (the reranker here), is what
+   matters, and eviction/reload cost doesn't show up until you actually run
+   two models back-to-back under time pressure, not from checking each
+   model's size in isolation.
+2. **A hardcoded timeout tuned for one model silently becomes wrong when the
+   model changes** — `_TIMEOUT_S = 30` was a reasonable constant for the
+   Phase 5 baseline's small local judge, but nothing flagged it as a
+   judge-model-dependent value when `JUDGE_LLM_MODEL` became independently
+   configurable (Challenge #6/#7's whole point). Config that varies with
+   another config value should be wired together, not left as a separate
+   constant someone has to remember to revisit.
+3. **A resilient failure mode (catch, log, return `None`, keep going) can
+   mask a data-quality problem instead of surfacing it** — the run
+   completing without crashing is not the same as the run producing a
+   trustworthy number. `n_judge_errors` is already reported in the final
+   summary for exactly this reason; it needs to actually be checked, not
+   just have a gate exist.
+
+### Best solution
+
+- Make the judge HTTP timeout configurable (`JUDGE_TIMEOUT_S` env var,
+  default unchanged at 30s) so a larger/slower judge model doesn't need a
+  code change to get a realistic timeout.
+- For any future multi-model-on-one-GPU run: check `nvidia-smi` and
+  `ollama ps` mid-run before trusting the numbers, to confirm or rule out
+  swap thrashing directly instead of inferring it from call latency.
+- If swap thrashing is confirmed: either accept the added latency as a fixed
+  cost of comparing two models on one consumer GPU, or restructure the run to
+  do all generation calls first (writing answers to disk) and all judge calls
+  second, so each phase only ever needs one model resident — trades wall-clock
+  time for eliminating the per-question evict/reload cycle entirely.
+
+### Update — the completed run confirms this is a real, severe problem
+
+The run was let finish rather than interrupted (see "Applied so far" below).
+Final report: `n_judge_errors = 25` out of roughly 54 answered/judged
+questions (56 in-scope minus ~2 refusals, matching the earlier q38/q44
+pattern) — **~46% of judged questions had at least one failed judge call.**
+Faithfulness came back 0.929 / Answer Relevance 0.980, both comfortably
+above their gates — but both are means over only the ~54% (or fewer) of
+questions that happened to succeed, not the full set. That is not a small
+tail of flaky retries; it's close to half the data missing, non-randomly
+(whatever made a call slow/fail is presumably correlated with something
+about that question — longer context, longer generated answer — not pure
+chance). **This PASS is not trustworthy and should not be read as "the
+independent-judge Faithfulness gate now passes"** — recorded as such, with
+this caveat, in `data/eval/answer_eval_results.md`.
+
+This elevates the swap-thrashing hypothesis from "plausible, unconfirmed" to
+"confirmed severe enough to invalidate the run" — even though the specific
+mechanism (`nvidia-smi`/`ollama ps` evidence) still wasn't captured live.
+
+### Applied so far
+
+- ✅ `src/evaluation/judge_client.py`: `_TIMEOUT_S` now reads
+  `JUDGE_TIMEOUT_S` (default `30`, unchanged) instead of a hardcoded
+  constant.
+- ✅ Result recorded with an explicit "NOT TRUSTED" caveat rather than as a
+  clean PASS — `data/eval/answer_eval_results.md`.
+- ⏳ Swap-thrashing *mechanism* still not confirmed with `nvidia-smi`/`ollama
+  ps` mid-run — only the *symptom rate* (46% failure) is now confirmed.
+  Needed before trusting a re-run: capture GPU memory / loaded-model state
+  during a live run to know whether raising `JUDGE_TIMEOUT_S` alone is
+  sufficient, or whether the two-phase restructure below is actually
+  required.
+- ⏳ Generation-then-judge two-phase restructure not implemented — given the
+  46% failure rate, this is now the more likely *required* fix, not just a
+  nice-to-have, unless GPU evidence shows otherwise.

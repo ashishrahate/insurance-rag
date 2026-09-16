@@ -309,3 +309,29 @@ Appended by `scripts/stop.ps1` at the end of each working session.
   - `?? tests/test_judge_service.py`
   - `?? tests/test_providers.py`
   - `?? tests/test_run_full_eval.py`
+
+## 2026-09-16 16:00
+- **Note:** Colab T4 GPU eval attempt (Qdrant Cloud, gemma3:12b judge, llama3.2:3b gen): retrieval numbers replicated local baseline exactly; full-pipeline Faithfulness/Answer Relevance run hit ~46% judge-call failures (Ollama model swap-thrashing hypothesis, confirmed via ollama_load_ms reload spikes in downloaded runs.jsonl) -- result marked NOT TRUSTED. Next session: two-phase generate-then-judge restructure planned in docs/next-session.md. New artifacts: requirements-colab.txt, colab/colab_gpu_eval.ipynb, docs/colab-shutdown.md.
+- Branch `main`, HEAD `60ead35 Phase 5, colab run: doc_id index fix for cloud qdrant`
+- Qdrant `insurance_ca_v1`: (qdrant not reachable) points
+- Commits this session (4):
+  - `60ead35 Phase 5, colab run: doc_id index fix for cloud qdrant`
+  - `201b108 Phase 5, Task 1: colab setup and cloud qdrant error resolution`
+  - `031af23 Add Qdrant Cloud/embedded-mode support for Colab; fix requirements.txt encoding`
+  - `ca347f1 Phase 5, Task 1: LLm service, Full pipeline eval, Hardening, provider abstraction, grown corpus`
+- Uncommitted (15):
+  - `M "Challenges and Learnings.md"`
+  - `M data/eval/answer_eval_results.md`
+  - `M data/eval/results.md`
+  - `M docs/next-session.md`
+  - `M src/evaluation/judge_client.py`
+  - `?? colab/answer_eval_results.md`
+  - `?? colab/ca_corpus.zip`
+  - `?? colab/colab_gpu_eval.ipynb`
+  - `?? colab/judge.log`
+  - `?? colab/ollama.log`
+  - `?? "colab/results (1).md"`
+  - `?? colab/results.md`
+  - `?? colab/runs.jsonl`
+  - `?? docs/colab-shutdown.md`
+  - `?? requirements-colab.txt`

@@ -54,23 +54,80 @@ loads it automatically, `config/settings.py`).
 
 ## What's next (user chose "wrap up" this session; pick one next time)
 
-1. **Re-run with an independent judge** — set `JUDGE_LLM_PROVIDER=openai` in
-   `.env` (needs `OPENAI_API_KEY`), restart the judge service, re-run
-   `run_full_eval.py` on the current 61-question set. This is the real fix
-   for the same-model self-evaluation bias flagged in Challenge #6, and
-   would give a trustworthy Faithfulness number for the first time.
-   Generation stays local/free (`LLM_PROVIDER` untouched) — only the judge
-   costs anything, and it's a fraction of a cent for 61 questions.
+1. **Two-phase `run_full_eval.py` (generate-then-judge), plus finish the
+   independent-judge comparison.** A same-GPU Colab attempt this session
+   (`llama3.2:3b` gen + `gemma3:12b` judge, both via one local Ollama
+   instance) hit **25 judge errors out of ~54 judged questions (~46%
+   failure)** — Ollama very likely swap-thrashing the two models' weights
+   in and out of the T4's VRAM on every question. The resulting
+   Faithfulness 0.929 / Answer Relevance 0.980 in
+   `data/eval/answer_eval_results.md` is marked **NOT TRUSTED** — see the
+   caveat there and `Challenges and Learnings.md` #8. Plan (agreed this
+   session, not yet built):
+   - Split `run_full_eval.py`'s single generate+judge loop into two passes:
+     **Pass 1** runs `answer_question()` for all questions and writes each
+     row (question, answer, hits/context, status) to an intermediate file
+     (e.g. `data/eval/_pending_full_eval.json`) — only the generation model
+     ever needs to be loaded. **Pass 2** reads that file and runs
+     `score_faithfulness()`/`score_answer_relevance()` on every row,
+     producing the same aggregate report as today — only the judge model
+     needs to be loaded, for the whole pass.
+   - Expose as CLI flags (`--generate-only`, `--judge-only <file>`) with
+     today's single-pass behavior kept as the default — this only matters
+     when generation and judge are different models sharing one GPU, not
+     for the local `llama3.2:3b`-does-both setup.
+   - **Let Ollama handle model eviction itself for now** (no explicit
+     `ollama stop` between passes) — but before assuming that's sufficient,
+     check whether there's a cheap way to know *in advance* whether a given
+     pass will actually force an eviction (e.g. query Ollama's API for
+     currently-loaded models + their VRAM footprint vs. what the next call
+     needs, `ollama ps` equivalent) rather than only inferring it after the
+     fact from call latency/errors like this session did. Open question,
+     not yet investigated.
+   - `src/evaluation/judge_client.py`'s `_TIMEOUT_S` is now configurable via
+     `JUDGE_TIMEOUT_S` (done this session) — helps regardless of the
+     two-phase fix, since 30s was always too tight for a 12B judge model.
+   - Once the two-phase restructure exists, re-run the Colab comparison (or
+     redo it with `JUDGE_LLM_PROVIDER=openai` instead of a second local
+     model, avoiding the swap-thrashing problem entirely by not sharing a
+     GPU between two Ollama models at all — needs `OPENAI_API_KEY` in
+     `.env`, see `.env.example`). Either path is the real fix for the
+     same-model self-evaluation bias flagged in Challenge #6.
 2. **Investigate q38/q44** — the two near-duplicate moratorium questions
    that got refused. Understand whether it's a retrieval-ranking issue
    (BM25/rerank not surfacing the distinguishing chunk) or a genuinely
    ambiguous case.
-3. **Execute the Colab GPU plan** (`docs/colab-gpu-plan.md`) — run
-   `llama3.1:8b` on a free T4, including the one small `get_client()` code
-   change the doc calls for (`QDRANT_LOCAL_PATH` embedded-mode branch, not
-   yet made). Gives a real second data point (bigger local model) before
-   deciding whether OpenAI is even necessary for generation.
-4. Only after the above give real confidence: **Phase 5 remainder**
+3. **Colab GPU plan — executed this session, partially.** `get_client()` now
+   supports both `QDRANT_LOCAL_PATH` (embedded mode) and `QDRANT_URL`/
+   `QDRANT_API_KEY` (Qdrant Cloud, used this run) — see `src/retrieval/search.py`
+   and the same fix ported to `src/ingestion/bootstrap_collection.py` (it had
+   its own duplicate host/port-only client that bypassed both). Retrieval
+   numbers on Colab matched the local baseline exactly (Hit@3/Recall@3/MRR
+   0.929/0.929/0.878, 129 points, 37-doc corpus) — good sanity check that the
+   environment replicated correctly. Full-pipeline numbers did **not**
+   complete cleanly — see item 1 above. Reusable artifacts for next time:
+   `requirements-colab.txt` (Colab-safe deps — no `pywin32`, no forced
+   `torch`/`torchvision` pins, `accelerate`/`jedi` added), `colab/colab_gpu_eval.ipynb`
+   (every working command in order, including the torch/torchvision ABI
+   mismatch recovery path), `docs/colab-shutdown.md` (end-of-session
+   checklist). `llama3.1:8b` generation-model comparison itself never ran —
+   the session stopped at the judge-swap-thrashing problem before getting to
+   the second (`llama3.1:8b`) run planned in the notebook.
+4. **Full-pipeline chunking comparison (naive vs. header-aware)** — header-aware
+   chunking (`chunk_and_index.py` without `--naive`) was already measured once,
+   in Phase 2, but only against the retrieval-only harness (Hit@K/Recall/MRR),
+   where it was a net loss and reverted (`Challenges and Learnings.md` #5: MRR
+   0.862 -> 0.804/0.833). It has never been run through the full-pipeline
+   LLM-as-judge harness (Faithfulness/Answer Relevance), which didn't exist
+   yet at the time. Open question: does the `parent_headers` context help the
+   LLM's *answer* quality even though it didn't help retrieval *ranking*?
+   Run as its own single-variable comparison — same corpus, same judge model,
+   same generation model as whatever the current baseline run is, chunking
+   mode as the only thing that changes — not mixed into the judge/generation
+   model comparisons in items 1/3, to keep each change individually
+   attributable per this project's own convention (CLAUDE.md "Baseline before
+   enhancement").
+5. Only after the above give real confidence: **Phase 5 remainder**
    (Blue/Green swap, `OpenAIProvider` real-API generation comparison) →
    **Phase 6** (second state, per `Roadmap_Final.md` — explicitly not
    started yet; CA-only scope was deliberately reconfirmed this session).

@@ -23,4 +23,4 @@ One row per configuration. Baseline first; each later row is a single measured c
 | 2026-09-07 22:39 | post-sweep restore: back to default 300/50, hybrid_rerank | hybrid_rerank | 3 | 300/50 | 0.957 | 0.913 | 0.884 | 0.965 | 0.100 |
 | 2026-09-16 02:25 | grown CA corpus (37 docs), existing 28 Qs only | hybrid_rerank | 3 | 300/50 | 1.000 | 1.000 | 0.949 | 0.987 | 0.152 |
 | 2026-09-16 02:33 | grown CA corpus (37 docs, 61 Qs) | hybrid_rerank | 3 | 300/50 | 0.929 | 0.929 | 0.878 | 0.958 | 0.152 |
-| 2026-09-16 19:05 | colab-t4, llama3.2:3b gen, gemma3:12b judge (retrieval sanity check -- matches local exactly, same corpus/embed model, retrieval doesn't depend on gen/judge) | hybrid_rerank | 3 | 300/50 | 0.929 | 0.929 | 0.878 | 0.958 | 0.152 |
+| 2026-09-16 19:00 | colab-t4, llama3.2:3b gen, gemma3:12b judge | hybrid_rerank | 3 | 300/50 | 0.929 | 0.929 | 0.878 | 0.958 | 0.152 |

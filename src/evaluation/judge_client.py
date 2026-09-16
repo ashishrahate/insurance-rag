@@ -7,13 +7,20 @@ returns None for that question -- the orchestrator records it as a
 judge_error rather than aborting the whole run. See src/judge_service/main.py
 for why this is an acceptable amount of resilience for a batch eval tool.
 """
+import os
+
 import requests
 
 from config.settings import JUDGE_SERVICE_URL
 from src.observability.logger import get_logger
 
 _log = get_logger("judge_client")
-_TIMEOUT_S = 30
+# 30s was fine for the local llama3.2:3b judge. A bigger/slower judge model
+# (e.g. gemma3:12b) can legitimately take longer, especially under GPU
+# memory pressure that forces Ollama to evict/reload between the generation
+# and judge models on every question -- override via JUDGE_TIMEOUT_S rather
+# than raising the default for everyone.
+_TIMEOUT_S = int(os.getenv("JUDGE_TIMEOUT_S", "30"))
 
 
 def _call_judge(payload: dict) -> float | None:
