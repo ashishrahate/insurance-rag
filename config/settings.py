@@ -185,8 +185,14 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 FEEDBACK_DB_PATH = os.getenv("FEEDBACK_DB_PATH", str(PROJECT_ROOT / "feedback.db"))
 
 # --- Payload fields that get a Qdrant index: field name -> schema type ---
+# state/document_type/date_effective are the roadmap-locked required set.
+# doc_id is additional: chunk_and_index.py filters deletes by doc_id for
+# idempotent re-indexing, which local Docker Qdrant tolerates unindexed (full
+# scan) but Qdrant Cloud's strict mode rejects with a 400 -- indexed here so
+# both backends behave the same way.
 PAYLOAD_INDEXES = {
     "state": "keyword",
     "document_type": "keyword",
     "date_effective": "datetime",
+    "doc_id": "keyword",
 }
