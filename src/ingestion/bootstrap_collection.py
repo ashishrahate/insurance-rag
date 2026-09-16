@@ -11,17 +11,8 @@ import argparse
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
-from config.settings import (
-    CA_COLLECTION,
-    EMBED_DIM,
-    PAYLOAD_INDEXES,
-    QDRANT_HOST,
-    QDRANT_PORT,
-)
-
-
-def get_client() -> QdrantClient:
-    return QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+from config.settings import CA_COLLECTION, EMBED_DIM, PAYLOAD_INDEXES
+from src.retrieval.search import get_client
 
 
 def ensure_collection(client: QdrantClient, recreate: bool = False) -> None:
