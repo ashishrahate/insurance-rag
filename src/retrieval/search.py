@@ -6,7 +6,14 @@ from functools import lru_cache
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
-from config.settings import CA_COLLECTION, QDRANT_HOST, QDRANT_PORT
+from config.settings import (
+    CA_COLLECTION,
+    QDRANT_API_KEY,
+    QDRANT_HOST,
+    QDRANT_LOCAL_PATH,
+    QDRANT_PORT,
+    QDRANT_URL,
+)
 from src.ingestion.embed import embed_text
 from src.observability.timing import Stopwatch, stage
 
@@ -25,7 +32,18 @@ def get_client() -> QdrantClient:
     telling us anything we don't already know.
 
     Call `get_client.cache_clear()` to force a fresh client.
+
+    Three modes, checked in this order (docs/colab-gpu-plan.md §4):
+    - `QDRANT_URL` set -> Qdrant Cloud, over HTTPS with an API key.
+    - `QDRANT_LOCAL_PATH` set -> embedded/local mode (e.g. Colab, no Docker).
+    - neither -> today's default host/port server connection, unchanged.
     """
+    if QDRANT_URL:
+        return QdrantClient(
+            url=QDRANT_URL, api_key=QDRANT_API_KEY, check_compatibility=False
+        )
+    if QDRANT_LOCAL_PATH:
+        return QdrantClient(path=QDRANT_LOCAL_PATH)
     return QdrantClient(
         host=QDRANT_HOST, port=QDRANT_PORT, check_compatibility=False
     )

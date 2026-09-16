@@ -52,6 +52,17 @@ EMBED_WITH_HEADERS = os.getenv("EMBED_WITH_HEADERS", "0").lower() not in ("0", "
 # --- Qdrant ---
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+# Set only for environments without a Docker Qdrant server (e.g. Colab) --
+# switches get_client() to embedded/local mode (RocksDB-backed, in-process).
+# Unset by default so today's host/port behavior is unchanged. See
+# docs/colab-gpu-plan.md §4.
+QDRANT_LOCAL_PATH = os.getenv("QDRANT_LOCAL_PATH")
+
+# Qdrant Cloud (docs/colab-gpu-plan.md §4 option 3): set both to point
+# get_client() at a hosted cluster over HTTPS instead of local host/port or
+# embedded mode. Takes precedence over QDRANT_LOCAL_PATH if both are set.
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
 # --- Collections (California first; Blue/Green swaps between _v1 and _v2) ---
 CA_COLLECTION = os.getenv("CA_COLLECTION", "insurance_ca_v1")
