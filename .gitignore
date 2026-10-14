@@ -10,7 +10,7 @@ venv/
 
 # Environment / secrets
 .env
-
+.env.example
 # Scraped and derived data (folders kept via .gitkeep, contents ignored)
 data/raw/*
 data/processed/*

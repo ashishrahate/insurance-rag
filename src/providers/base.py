@@ -34,5 +34,12 @@ class Provider(ABC):
         """Return one embedding vector per input string, in order."""
 
     @abstractmethod
-    def chat(self, messages: list[dict], *, json_mode: bool = False) -> ChatResponse:
-        """Return a ChatResponse for the given messages."""
+    def chat(
+        self, messages: list[dict], *, json_mode: bool = False, temperature: float | None = None
+    ) -> ChatResponse:
+        """Return a ChatResponse for the given messages.
+
+        `temperature=None` keeps the provider's own default (generation
+        uses this). The judge passes JUDGE_TEMPERATURE (0.0) so the same
+        input scores the same way across runs -- Challenge #7.
+        """

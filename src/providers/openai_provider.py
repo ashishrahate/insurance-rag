@@ -14,8 +14,17 @@ from src.providers.base import ChatResponse, Provider
 
 
 class OpenAIProvider(Provider):
-    def __init__(self, model: str | None = None):
-        if not OPENAI_API_KEY:
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ):
+        # api_key/base_url let any OpenAI-compatible endpoint reuse this class
+        # (see openrouter_provider.py); omitted, they default to real OpenAI.
+        api_key = api_key or OPENAI_API_KEY
+        if not api_key:
             raise ValueError(
                 "OPENAI_API_KEY is not set -- required to use LLM_PROVIDER=openai "
                 "(or JUDGE_LLM_PROVIDER=openai)."
@@ -25,17 +34,24 @@ class OpenAIProvider(Provider):
         # embed() always uses OPENAI_EMBED_MODEL, since nothing needs to
         # override the embedding model independently yet.
         self.model = model or OPENAI_LLM_MODEL
-        self._client = OpenAI(api_key=OPENAI_API_KEY)
+        self._client = OpenAI(api_key=api_key, base_url=base_url)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         response = self._client.embeddings.create(model=OPENAI_EMBED_MODEL, input=texts)
         return [item.embedding for item in response.data]
 
-    def chat(self, messages: list[dict], *, json_mode: bool = False) -> ChatResponse:
+    def chat(
+        self, messages: list[dict], *, json_mode: bool = False, temperature: float | None = None
+    ) -> ChatResponse:
+        # Only send response_format when JSON mode is on -- an explicit
+        # `response_format: null` is rejected by some OpenAI-compatible APIs.
+        extra = {"response_format": {"type": "json_object"}} if json_mode else {}
+        if temperature is not None:
+            extra["temperature"] = temperature
         response = self._client.chat.completions.create(
             model=self.model,
             messages=messages,
-            response_format={"type": "json_object"} if json_mode else None,
+            **extra,
         )
         usage = response.usage
         return ChatResponse(

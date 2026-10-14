@@ -417,6 +417,67 @@ into whichever phase happens to be active.
 
 ---
 
+## 12. Coverage snapshot (2026-10-14) — what the numbers are actually measured on
+
+Every metric in `data/eval/results.md` / `answer_eval_results.md` is measured
+on the corpus below. Re-take this snapshot whenever the corpus or eval set
+changes, so a metric is never read without knowing what it covers.
+
+| Dimension | Current | Roadmap end-state |
+|---|---|---|
+| States | **1** (CA) | 2 in Phase 6 (NY or TX); more as stretch (FL, NAIC model laws) |
+| Document types | **1** — bulletins only (37/37) | `document_type` field already supports regulations, notices, commissioner opinions |
+| Years | **3** — 2024–2026 (2026 YTD) | not defined |
+| Corpus | 37 PDFs → ~30k words → 129 chunks in `insurance_ca_v1` | — |
+| Eval set | 61 questions, single state | +15–20 per new state incl. cross-state questions (Phase 6) |
+
+- **Docs per year:** 2024: 14 (2024-1, 2024-3…14, plus the FY23-24 PBR/LTC
+  bulletin — **2024-2 is missing**, check whether it exists upstream);
+  2025: 17 (complete 1–17); 2026: 6 (1–6).
+- **Eval by category:** 33 single_doc_factual · 13 temporal_disambiguation ·
+  10 comparison · 5 out_of_scope.
+- **Eval by source-doc year:** 2024: 22 · 2025: 22 · 2026: 5 · cross-year: 7
+  · none (OOS): 5.
+- **Doc coverage:** 35/37 docs have ≥1 question — **2025-6 and 2025-13 have
+  none.** 46 Qs target 1 doc, 10 target 2–3, 5 target 0.
+
+**What this means for scaling:**
+
+1. **Breadth is tiny.** 1 state × 1 doc type × ~2.5 years is a proof of
+   concept — deliberate (roadmap principle 1), but no number here says
+   anything yet about scale behavior.
+2. **`date_effective` / `date_issued` are null on every chunk** — the
+   biggest blocker. The `date_effective` payload index exists but is empty,
+   so temporal filtering can't work, and the 13 temporal questions lean on
+   ranking alone. Every added year of data makes this worse.
+3. **Near-duplicates are already the failure mode.** q38/q44 (wildfire
+   moratorium cluster) were refused at just 3 years. More years → more such
+   clusters. Metadata filtering (year/effective date) is the scalable fix,
+   not ranking alone.
+4. **The eval set has to scale with the corpus.** ~1.6 Qs/doc hand-written
+   doesn't survive hundreds of docs — expect LLM-drafted + spot-checked
+   questions (the method used for the 33 added on 2026-09-16).
+5. **Retrieval is only proven at 129 chunks.** Exact search (§5),
+   in-memory BM25 (§1), and reranker latency all need revisiting at scale.
+6. **Phase 6 ADR pending:** one collection with a `state` filter vs. one per
+   state — existing payload indexes favor the single filtered collection.
+
+**Senior system engineering decision — order before scaling (agreed
+2026-10-14):**
+1. Fix `date_effective` / `date_issued` extraction.
+2. Close the small gaps: find bulletin 2024-2; add eval questions for 2025-6
+   and 2025-13.
+3. Finish trustworthy evaluation: two-pass eval + independent judge (now
+   via OpenRouter, `JUDGE_LLM_PROVIDER=openrouter`).
+4. **Scale depth before breadth:** add CA 2020–2023 *before* a second state,
+   so temporal scaling is tested in isolation, not confounded with
+   state-separation in the same change. (A deliberate reordering relative to
+   `Roadmap_Final.md`, which goes straight to Phase 6 — chosen to keep each
+   scaling axis individually measurable, the same "change one thing"
+   discipline as Phase 2.)
+
+---
+
 *(Add new entries above this line as they come up — single Ollama instance
 vs. a hosted provider under concurrent load, FastAPI service concurrency,
 etc.)*

@@ -26,6 +26,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from config.settings import JUDGE_TEMPERATURE
 from src.judge_service.prompts import build_answer_relevance_messages, build_faithfulness_messages
 from src.judge_service.schemas import JudgeRequest, JudgeResponse, LLMJudgeReply
 from src.observability.logger import get_logger, log_run, new_correlation_id
@@ -55,7 +56,7 @@ def _parse_reply(content: str) -> LLMJudgeReply:
 
 def _score(messages: list[dict]) -> LLMJudgeReply:
     provider = get_judge_provider()
-    resp = provider.chat(messages, json_mode=True)
+    resp = provider.chat(messages, json_mode=True, temperature=JUDGE_TEMPERATURE)
     raw_content = resp["content"].strip()
     try:
         return _parse_reply(raw_content)
@@ -69,7 +70,7 @@ def _score(messages: list[dict]) -> LLMJudgeReply:
                 "Reply again with ONLY that JSON object, nothing else."
             )},
         ]
-        resp = provider.chat(retry_messages, json_mode=True)
+        resp = provider.chat(retry_messages, json_mode=True, temperature=JUDGE_TEMPERATURE)
         raw_content = resp["content"].strip()
         return _parse_reply(raw_content)  # let a second failure raise -> 500
 

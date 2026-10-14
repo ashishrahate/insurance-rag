@@ -100,6 +100,16 @@ OPENAI_LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
 OPENAI_EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
 OPENAI_EMBED_DIM = 1536
 
+# --- OpenRouter provider (chat only -- see src/providers/openrouter_provider.py) ---
+# OpenAI-compatible API in front of many vendors' models. Used for the
+# independent judge (JUDGE_LLM_PROVIDER=openrouter): an API-hosted judge
+# never competes with the local generation model for GPU/RAM, which is what
+# broke the 2026-09-16 Colab run (Challenge #8), and it removes same-model
+# self-evaluation bias (Challenge #6).
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_LLM_MODEL = os.getenv("OPENROUTER_LLM_MODEL", "deepseek/deepseek-v4.1-flash")
+
 # --- LLM (Ollama) ---
 # Dev model is deliberately small: this machine has no Ollama-usable GPU, so
 # inference is 100% CPU. Phase 1 only needs the pipeline to work; real answer
@@ -158,7 +168,17 @@ EVAL_K = 3
 # touches the generation path it's scoring. Same ollama/llama3.2:3b default as
 # generation for now, since only one provider exists yet.
 JUDGE_LLM_PROVIDER = os.getenv("JUDGE_LLM_PROVIDER", "ollama")
-JUDGE_LLM_MODEL = os.getenv("JUDGE_LLM_MODEL", "llama3.2:3b")
+# Unset -> llama3.2:3b for ollama, else None so the provider uses its own
+# default (OPENAI_LLM_MODEL / OPENROUTER_LLM_MODEL) -- never an Ollama tag
+# sent to a remote API.
+JUDGE_LLM_MODEL = os.getenv(
+    "JUDGE_LLM_MODEL", "llama3.2:3b" if JUDGE_LLM_PROVIDER == "ollama" else None
+)
+# 0.0 = greedy decoding: the judge should score identical input identically.
+# At the provider default, llama3.2:3b scored the same input 0.5 then 0.0
+# (Challenge #7). Generation keeps its provider default -- changing both at
+# once would make the next measurement unattributable.
+JUDGE_TEMPERATURE = float(os.getenv("JUDGE_TEMPERATURE", "0.0"))
 JUDGE_SERVICE_URL = os.getenv("JUDGE_SERVICE_URL", "http://localhost:8100")
 
 ANSWER_EVAL_RESULTS_FILE = EVAL_DIR / "answer_eval_results.md"

@@ -11,6 +11,7 @@ from src.providers.base import Provider
 _PROVIDERS = {
     "ollama": "src.providers.ollama_provider.OllamaProvider",
     "openai": "src.providers.openai_provider.OpenAIProvider",
+    "openrouter": "src.providers.openrouter_provider.OpenRouterProvider",
 }
 
 

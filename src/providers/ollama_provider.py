@@ -20,12 +20,17 @@ class OllamaProvider(Provider):
         )
         return response["embeddings"]
 
-    def chat(self, messages: list[dict], *, json_mode: bool = False) -> ChatResponse:
+    def chat(
+        self, messages: list[dict], *, json_mode: bool = False, temperature: float | None = None
+    ) -> ChatResponse:
+        options = {"num_predict": LLM_NUM_PREDICT}
+        if temperature is not None:
+            options["temperature"] = temperature
         resp = ollama.chat(
             model=self.model,
             messages=messages,
             keep_alive=OLLAMA_KEEP_ALIVE,
-            options={"num_predict": LLM_NUM_PREDICT},
+            options=options,
             format="json" if json_mode else None,
         )
         total_ns = resp.get("total_duration")
