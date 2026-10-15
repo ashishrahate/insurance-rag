@@ -15,3 +15,4 @@ actually fixed (not just worked around by a longer client timeout).
 | 2026-09-16 00:52 | phase 5 baseline (refusal-aware) | 3 | 0.957 | 0.913 | 0.884 | 0.518 | 0.918 | 0 | FAIL |
 | 2026-09-16 03:41 | grown CA corpus (37 docs, 61 Qs) | 3 | 0.929 | 0.929 | 0.878 | 0.706 | 0.835 | 0 | FAIL |
 | 2026-09-16 ~19:30 | colab-t4, llama3.2:3b gen, gemma3:12b judge -- **NOT TRUSTED, see caveat** | 3 | 0.929 | 0.929 | 0.878 | 0.929 | 0.980 | 25 | PASS* |
+| 2026-10-14 23:53 | independent judge baseline (OpenRouter) [gen: llama3.2:3b; judge: deepseek/deepseek-v4.1-flash T=0.0] | 3 | 0.929 | 0.929 | 0.878 | 0.674 | 0.905 | 1 | FAIL |

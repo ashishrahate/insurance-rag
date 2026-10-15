@@ -20,6 +20,17 @@ function Info($m) { Write-Host "  $m"      -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "  OK  $m"  -ForegroundColor Green }
 function Warn($m) { Write-Host "  !!  $m"  -ForegroundColor Yellow }
 
+# `docker info` writes to stderr when the daemon is down. Under Windows
+# PowerShell 5.1, redirecting native stderr (2>$null) turns each line into an
+# ErrorRecord, which $ErrorActionPreference='Stop' makes fatal -- the script
+# used to die on the very check meant to detect "Docker not running". Relax
+# the preference only inside this function (it's function-scoped).
+function Test-Docker {
+  $ErrorActionPreference = 'Continue'
+  $null = docker info 2>$null
+  return ($LASTEXITCODE -eq 0)
+}
+
 $Models     = @('llama3.2:3b', 'nomic-embed-text')
 $Qdrant     = 'http://localhost:6333'
 $Ollama     = 'http://localhost:11434'
@@ -29,8 +40,7 @@ Write-Host "`n=== insurance-rag :: start ===" -ForegroundColor White
 
 # 1. Docker Desktop -----------------------------------------------------------
 Info "Checking Docker daemon..."
-$null = (docker info 2>$null)
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Docker)) {
   Warn "Docker not responding - launching Docker Desktop"
   $dd = Join-Path $Env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
   if (-not (Test-Path $dd)) { throw "Docker Desktop not found at $dd" }
@@ -38,9 +48,9 @@ if ($LASTEXITCODE -ne 0) {
   $deadline = (Get-Date).AddMinutes(3)
   do {
     Start-Sleep 4
-    $null = (docker info 2>$null)
-  } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
-  if ($LASTEXITCODE -ne 0) { throw "Docker did not become ready within 3 minutes" }
+    $dockerUp = Test-Docker
+  } while (-not $dockerUp -and (Get-Date) -lt $deadline)
+  if (-not $dockerUp) { throw "Docker did not become ready within 3 minutes" }
 }
 Ok "Docker is up"
 

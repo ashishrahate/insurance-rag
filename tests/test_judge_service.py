@@ -38,7 +38,10 @@ def _assert_valid_score_shape(body: dict):
 def test_healthcheck(judge_app_client):
     resp = judge_app_client.get("/healthcheck")
     assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
+    body = resp.json()
+    assert body["status"] == "ok"
+    # Provenance: which judge is scoring must be visible, not implicit.
+    assert {"judge_provider", "judge_model", "judge_temperature"} <= body.keys()
 
 
 def test_faithfulness_returns_valid_score_shape(judge_app_client):

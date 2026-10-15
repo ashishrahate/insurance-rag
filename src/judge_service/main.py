@@ -26,7 +26,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from config.settings import JUDGE_TEMPERATURE
+from config.settings import JUDGE_LLM_PROVIDER, JUDGE_TEMPERATURE
 from src.judge_service.prompts import build_answer_relevance_messages, build_faithfulness_messages
 from src.judge_service.schemas import JudgeRequest, JudgeResponse, LLMJudgeReply
 from src.observability.logger import get_logger, log_run, new_correlation_id
@@ -45,9 +45,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+def _judge_info() -> dict:
+    """Which judge is actually scoring -- the resolved provider/model, not
+    just the env vars. Reported by /healthcheck and stamped on every
+    judge_score log line, so scores from different judges are never
+    indistinguishable after the fact."""
+    return {
+        "judge_provider": JUDGE_LLM_PROVIDER,
+        "judge_model": get_judge_provider().model,
+        "judge_temperature": JUDGE_TEMPERATURE,
+    }
+
+
 @app.get("/healthcheck")
 def healthcheck():
-    return {"status": "ok"}
+    return {"status": "ok", **_judge_info()}
 
 
 def _parse_reply(content: str) -> LLMJudgeReply:
@@ -96,6 +108,7 @@ def judge(req: JudgeRequest):
         "question": req.question,
         "score": reply.score,
         "rationale": reply.rationale,
+        **_judge_info(),
     })
 
     return JudgeResponse(score=reply.score, rationale=reply.rationale)

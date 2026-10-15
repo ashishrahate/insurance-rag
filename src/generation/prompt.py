@@ -58,14 +58,22 @@ def _strip_delimiter_tokens(text: str) -> str:
     return text
 
 
+def source_label(payload: dict) -> str:
+    """The "Bulletin <num> - <title>" line the LLM sees above each passage.
+    Shared with the eval harness so the judge scores against the same
+    source attribution the generator had -- without it, every correctly
+    cited bulletin number looked like a hallucination to the judge."""
+    num = payload.get("bulletin_number") or payload.get("doc_id")
+    return f"Bulletin {num} - {payload.get('title', '')}"
+
+
 def format_context(hits: list[ScoredPoint]) -> str:
     blocks = []
     for i, h in enumerate(hits, 1):
         p = h.payload
-        num = p.get("bulletin_number") or p.get("doc_id")
         content = _strip_delimiter_tokens(p.get("content", "").strip())
         blocks.append(
-            f"[{i}] Bulletin {num} - {p.get('title', '')}\n"
+            f"[{i}] {source_label(p)}\n"
             f"Source: {p.get('source_url', '')}\n"
             f"{PASSAGE_START}\n{content}\n{PASSAGE_END}"
         )

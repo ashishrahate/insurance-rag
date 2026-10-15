@@ -33,6 +33,20 @@ def _call_judge(payload: dict) -> float | None:
         return None
 
 
+def get_judge_info() -> dict:
+    """The judge service's resolved provider/model/temperature (from its
+    /healthcheck). Asked of the service rather than read from this process's
+    settings -- the judge runs in its own process and may have a different
+    environment. Empty dict if unreachable; the eval then just records less."""
+    try:
+        resp = requests.get(f"{JUDGE_SERVICE_URL}/healthcheck", timeout=5)
+        resp.raise_for_status()
+        return {k: v for k, v in resp.json().items() if k.startswith("judge_")}
+    except Exception as e:
+        _log.warning("could not read judge info from /healthcheck: %s", e)
+        return {}
+
+
 def score_faithfulness(question: str, answer: str, context_chunks: list[str]) -> float | None:
     return _call_judge({
         "question": question,

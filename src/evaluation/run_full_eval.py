@@ -25,11 +25,14 @@ from config.settings import (
     EVAL_K,
     FAITHFULNESS_GATE,
     HIT_AT_K_GATE,
+    LLM_PROVIDER,
 )
-from src.evaluation.judge_client import score_answer_relevance, score_faithfulness
+from src.evaluation.judge_client import get_judge_info, score_answer_relevance, score_faithfulness
 from src.evaluation.retrieval_eval import OUT_OF_SCOPE, load_eval_set, score_question
 from src.generation.generate import answer_question
+from src.generation.prompt import source_label
 from src.observability.logger import log_run, new_correlation_id
+from src.providers import get_llm_provider
 
 
 def evaluate(k: int) -> dict:
@@ -42,7 +45,10 @@ def evaluate(k: int) -> dict:
         answer = result["answer"]
         hits = result["hits"]
         retrieved_ids = list(dict.fromkeys(h.payload["doc_id"] for h in hits))
-        context_chunks = [h.payload["content"] for h in hits]
+        # Same source label the generator saw (prompt.py), not bare content --
+        # otherwise a correctly cited bulletin number is "unsupported" to the
+        # judge. Bug found in the 2026-10-14 OpenRouter baseline run.
+        context_chunks = [f"{source_label(h.payload)}\n{h.payload['content']}" for h in hits]
 
         row = {
             "id": q["id"],
@@ -189,6 +195,14 @@ def main() -> None:
                          "scores) to PATH")
     args = ap.parse_args()
 
+    # Captured up front: which models produced this row. Appended to the label
+    # (not a new column) so answer_eval_results.md's table stays one table.
+    models = {"llm_provider": LLM_PROVIDER, "llm_model": get_llm_provider().model, **get_judge_info()}
+    judge_desc = (f"{models['judge_model']} T={models['judge_temperature']}"
+                  if "judge_model" in models else "unknown")
+    # ";" not "|": a pipe would split the markdown table cell.
+    models_desc = f"[gen: {models['llm_model']}; judge: {judge_desc}]"
+
     report = evaluate(args.k)
     print_report(report, args.show_questions)
 
@@ -198,7 +212,7 @@ def main() -> None:
         )
         print(f"dumped full report to {args.dump_json}")
 
-    label = args.label or "full-pipeline eval (unlabelled)"
+    label = f"{args.label or 'full-pipeline eval (unlabelled)'} {models_desc}"
     if not args.dry_run:
         append_results_row(report, label)
 
@@ -208,6 +222,7 @@ def main() -> None:
         "status": "ok",
         "k": args.k,
         "label": label,
+        **models,
         **report["aggregate"],
         **report["gates"],
     })

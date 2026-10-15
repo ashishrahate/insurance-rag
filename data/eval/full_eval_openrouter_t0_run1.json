@@ -1,0 +1,1189 @@
+{
+  "k": 3,
+  "aggregate": {
+    "hit_at_k": 0.9285714285714286,
+    "recall_at_k": 0.9285714285714286,
+    "mrr": 0.8779761904761905,
+    "faithfulness": 0.674074074074074,
+    "answer_relevance": 0.9047169811320754,
+    "n_in_scope": 56,
+    "n_out_of_scope": 5,
+    "n_judge_errors": 1
+  },
+  "gates": {
+    "hit_at_k_pass": true,
+    "faithfulness_pass": false,
+    "passed": false
+  },
+  "per_question": [
+    {
+      "id": "q01",
+      "category": "single_doc_factual",
+      "question": "What is the Fiscal Year 2024-25 Life principle-based reserving annual aggregate assessment amount?",
+      "relevant": [
+        "CA_BULLETIN_2025_8"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2025_9"
+      ],
+      "answer": "(Bulletin 2025-8) According to the California Insurance Code section 10489.992(b)(4), the aggregate annual assessment for Fiscal Year (FY) 2024-25 for Life principle-based reserving is $3,188,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q02",
+      "category": "single_doc_factual",
+      "question": "Which California Insurance Code section authorizes the Long-Term Care principle-based reserving annual aggregate assessment?",
+      "relevant": [
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024"
+      ],
+      "answer": "(Bulletin 2025-9) According to California Insurance Code section 1067.11(4)(j), the Long-Term Care principle-based reserving annual aggregate assessment is authorized.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q03",
+      "category": "single_doc_factual",
+      "question": "During a declared state of emergency, what is the minimum number of days an insurer must give an insured to submit proof of loss?",
+      "relevant": [
+        "CA_BULLETIN_2026_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_5",
+        "CA_BULLETIN_2025_2"
+      ],
+      "answer": "Bulletin 2026-5, sections 2051.5(b)(3)(A) and 2051.5(b) \n\nIn the event of a loss relating to a state of emergency, an insurer shall not require the insured to provide proof of loss less than 100 days after the loss.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q04",
+      "category": "single_doc_factual",
+      "question": "Which Senate Bill amended Insurance Code section 2051.5 to extend the proof of loss deadline during a state of emergency?",
+      "relevant": [
+        "CA_BULLETIN_2026_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_5"
+      ],
+      "answer": "Bulletin 2026-5 (Context passages 1 and 2).\n\nSenate Bill 495 (Ch. 542, Stats. of 2025) amended Insurance Code section 2051.5 to extend the proof of loss deadline during a state of emergency.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q05",
+      "category": "single_doc_factual",
+      "question": "Under Assembly Bill 144, within how many business days must a health insurer begin covering a newly recommended CDPH immunization?",
+      "relevant": [
+        "CA_BULLETIN_2025_14"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_14"
+      ],
+      "answer": "According to Bulletin 2025-14, health insurers must begin covering a newly recommended CDPH immunization within 15 business days after CDPH publishes its recommendation, which is a deadline of October 8, 2025, for COVID-19 immunizations.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.5,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q06",
+      "category": "single_doc_factual",
+      "question": "What coverage category was added to the California Export List in 2025?",
+      "relevant": [
+        "CA_BULLETIN_2025_16"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_16",
+        "CA_BULLETIN_2024_10"
+      ],
+      "answer": "(Bulletin 2025-16) According to the provided context passages, the coverage category \"Commercial Cannabis Related Operations\" was added to the California Export List in 2025.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q07",
+      "category": "single_doc_factual",
+      "question": "What is the adjusted minimum net worth amount for the commercial insured exemption effective January 1, 2025?",
+      "relevant": [
+        "CA_BULLETIN_2025_10"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_10",
+        "CA_BULLETIN_2026_5"
+      ],
+      "answer": "According to Bulletin 2025-10, the adjusted minimum net worth amount for the commercial insured exemption effective January 1, 2025, is $29,179,483. (Bulletin 2025-10, page 1)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q08",
+      "category": "single_doc_factual",
+      "question": "What did the California Supreme Court decision in Another Planet establish about coverage for smoke damage claims?",
+      "relevant": [
+        "CA_BULLETIN_2025_7"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_7"
+      ],
+      "answer": "(Bulletin 2025-7, sections not specified) \n\nAccording to the California Supreme Court's decision in Another Planet, smoke damage can be covered where a policy insures against \"direct physical loss of or damage to\" property, or substantially similar terms. The court defined direct physical loss or damage to property as requiring a distinct, demonstrable, physical alteration to property, which need not be visible to the naked eye or structural, but must result in some injury to or impairment of the property as property.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.9,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q09",
+      "category": "single_doc_factual",
+      "question": "What does Senate Bill 805, the No Vigilantes Act, prohibit bail fugitive recovery agents from doing?",
+      "relevant": [
+        "CA_BULLETIN_2025_15"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_15",
+        "CA_BULLETIN_2024_1"
+      ],
+      "answer": "(Bulletin 2025-15) Senate Bill 805, the No Vigilantes Act, prohibits bail fugitive recovery agents from using their positions for immigration enforcement purposes, except pursuant to a valid judicial warrant or court order. Specifically, it prohibits disclosing or providing personally identifiable information of any bail fugitive for purposes of immigration enforcement, except pursuant to a valid judicial warrant or court order.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q10",
+      "category": "single_doc_factual",
+      "question": "Which wildfire led to the mandatory moratorium covering Mono County in December 2025?",
+      "relevant": [
+        "CA_BULLETIN_2025_17"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_17",
+        "CA_BULLETIN_2026_1"
+      ],
+      "answer": "According to Bulletin 2025-17, the wildfire that led to the mandatory moratorium covering Mono County in December 2025 was the Pack Fire. Specifically, the Commissioner relied upon data identifying the fire that pertains to the state of emergency and describing the fire perimeter to determine which ZIP Codes are subject to the moratorium. The Pack Fire's ZIP Codes are listed as 93512, 93514, 93529, and 93546. (Bulletin 2025-17, Section 1 and Emphasis added.)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q11",
+      "category": "single_doc_factual",
+      "question": "What five-year CPI-U percentage change was used for the 2025 commercial insured exemption adjustment?",
+      "relevant": [
+        "CA_BULLETIN_2025_10"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_10",
+        "CA_BULLETIN_2024_14"
+      ],
+      "answer": "According to Bulletin CA_BULLETIN_2025_10, the 2025 commercial insured exemption adjustment used a 22.7% (calculated as (314.175 - 256.143) / 256.143) percentage change in the Consumer Price Index for All Urban Consumers (CPI-U) from June 2019 to June 2024.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q12",
+      "category": "single_doc_factual",
+      "question": "According to Bulletin 2025-11, which rate arrangements likely violate the prior approval provisions of Proposition 103?",
+      "relevant": [
+        "CA_BULLETIN_2025_11"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2025_4"
+      ],
+      "answer": "According to Bulletin 2025-11, the following rate arrangements likely violate the prior approval provisions of Proposition 103: \n\n1. Negotiated or mutually-agreed-upon rates\n2. Retrospective rating plans\n3. Large Risk Alternative Rating Options (LRAROs)\n4. Consent-to-rate arrangements",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q13",
+      "category": "single_doc_factual",
+      "question": "Which bulletin extends the wildfire cancellation and non-renewal moratorium to commercial property insurance, and which statute authorizes that extension?",
+      "relevant": [
+        "CA_BULLETIN_2026_6"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_1",
+        "CA_BULLETIN_2025_1",
+        "CA_BULLETIN_2026_6"
+      ],
+      "answer": "According to Bulletin 2026-6 (Bulletin CA_BULLETIN_2026_6), the moratorium against cancellations and non-renewals of policies of commercial or residential property insurance is extended.\n\nThe statute that authorizes this extension is Insurance Code sections 675.1 and 675.55.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.3333333333333333,
+      "faithfulness": 0.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q14",
+      "category": "single_doc_factual",
+      "question": "What is the FY 2024-25 Long-Term Care PBR annual aggregate assessment amount?",
+      "relevant": [
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024"
+      ],
+      "answer": "(Bulletin 2025-9, passage [1]) According to the California Department of Insurance, the FY 2024-25 Long-Term Care PBR annual aggregate assessment amount is $1,433,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q15",
+      "category": "comparison",
+      "question": "What is the difference between the Life and the Long-Term Care principle-based reserving annual aggregate assessments for FY 2024-25?",
+      "relevant": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_4"
+      ],
+      "answer": "(Bulletin 2025-8) California Insurance Code (CIC) section 10489.992(b)(1) authorizes an annual assessment of $3,188,000 for life insurance companies, whereas (Bulletin 2025-9) California Insurance Code section 1067.11(4)(j) authorizes an annual assessment of $1,433,000 for long-term care insurance companies.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 0.9
+    },
+    {
+      "id": "q16",
+      "category": "comparison",
+      "question": "How did the Life principle-based reserving annual aggregate assessment change from FY 2024-25 to FY 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_4"
+      ],
+      "answer": "(Bulletin 2025-8, Section: Table of Assessment Tiers and Per Company Assessment)\n\nThe assessment tiers and per company assessment amounts for the Life principle-based reserving annual aggregate assessment changed from FY 2024-25 to FY 2025-26. Specifically, the assessment amounts decreased for most tiers.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.9,
+      "answer_relevance": 0.4
+    },
+    {
+      "id": "q17",
+      "category": "comparison",
+      "question": "How did the Long-Term Care principle-based reserving annual aggregate assessment change from FY 2024-25 to FY 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_4"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_3"
+      ],
+      "answer": "According to Bulletin 2025-9, the Long-Term Care principle-based reserving annual aggregate assessment for FY 2024-25 was $1,433,000. \n\nIn contrast, Bulletin 2026-4 states that the California Department of Insurance (CDI) has adopted an aggregate annual assessment for Fiscal Year (FY) 2025-26 of $1,329,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 0.9
+    },
+    {
+      "id": "q18",
+      "category": "comparison",
+      "question": "Bulletin 2025-11 and Bulletin 2026-2 both concern Proposition 103 rate compliance - what distinct violation does each address?",
+      "relevant": [
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2026_2"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2026_2",
+        "CA_BULLETIN_2024_14"
+      ],
+      "answer": "According to Bulletin 2025-11 and Bulletin 2026-2, the distinct violations are as follows:\n\nBulletin 2025-11 addresses the use of \"negotiated or mutually-agreed-upon rates, retrospective rating plans, Large Risk Alternative Rating Options, or consent-to-rate arrangements\" that have not been filed and approved by the Department, which likely violates the prior approval provisions of Proposition 103. This is the main issue addressed in Bulletin 2025-11.\n\nBulletin 2026-2 specifically addresses the unauthorized modification of formulas in rate templates and exhibits, which is a violation of the Instructions and requires insurers to submit a Filing Memorandum and an Affidavit under penalty of perjury to certify that no adjustments or modifications were made. This is the main issue addressed in Bulletin 2026-2.\n\n( Bulletin 2024-14 is not relevant to this question)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.8,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q19",
+      "category": "comparison",
+      "question": "Which Insurance Code sections authorize the Life assessment versus the Long-Term Care assessment under principle-based reserving?",
+      "relevant": [
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2026_4"
+      ],
+      "answer": "Bulletin 2025-8 (Life Assessor) and Bulletin 2025-9 (Long-Term Care Assessor) both cite California Insurance Code section 1067.11(4)(j), but the question is asking for the specific sections that authorize the Life assessment versus the Long-Term Care assessment.\n\nFor Life Insurance, the relevant section is California Insurance Code section 10489.992(b)(1).\n\nFor Long-Term Care Insurance, the relevant section is also California Insurance Code section 1067.11(4)(j).",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.5,
+      "answer_relevance": null
+    },
+    {
+      "id": "q20",
+      "category": "temporal_disambiguation",
+      "question": "What is the Life principle-based reserving annual aggregate assessment for fiscal year 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2026_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_8"
+      ],
+      "answer": "(Bulletin 2026-3) According to the California Department of Insurance, the Life principle-based reserving annual aggregate assessment for Fiscal Year 2025-26 is $3,078,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q21",
+      "category": "temporal_disambiguation",
+      "question": "Which moratorium bulletin concerns the Franklin Fire, and on what date was that state of emergency declared?",
+      "relevant": [
+        "CA_BULLETIN_2025_12"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_12",
+        "CA_BULLETIN_2026_1"
+      ],
+      "answer": "According to Bulletin 2025-12, the moratorium bulletin that concerns the Franklin Fire is the same as the one mentioned in the context passages, which is Bulletin 2025-12 itself. \n\nThe state of emergency declared due to the Franklin Fire was on June 18, 2025, as proclaimed by Governor Gavin Newsom.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.5,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q22",
+      "category": "temporal_disambiguation",
+      "question": "In the Long-Term Care principle-based reserving bulletin issued in May 2025, what was the aggregate assessment amount?",
+      "relevant": [
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_8"
+      ],
+      "answer": "According to Bulletin 2025-9, the aggregate annual assessment for Fiscal Year (FY) 2024-25 was $1,433,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q23",
+      "category": "temporal_disambiguation",
+      "question": "Which 2026 bulletin addresses the wildfire moratorium for the Gifford Fire?",
+      "relevant": [
+        "CA_BULLETIN_2026_1"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_6",
+        "CA_BULLETIN_2026_1",
+        "CA_BULLETIN_2026_5"
+      ],
+      "answer": "Bulletin CA_BULLETIN_2026_6 - Bulletin 2026-6: One-Year Moratorium.\n\n(This bulletin specifically addresses the wildfire moratorium for the Gifford Fire, as mentioned in the passage)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.5,
+      "faithfulness": 0.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q24",
+      "category": "out_of_scope",
+      "question": "What are New York's requirements for personal auto insurance rate filings?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2024_14"
+      ],
+      "answer": "The provided bulletins do not cover this.",
+      "status": "refused_guardrail",
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q25",
+      "category": "out_of_scope",
+      "question": "How does a beneficiary file a life insurance death benefit claim in California?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2025_2",
+        "CA_BULLETIN_2025_11",
+        "CA_BULLETIN_2024_14"
+      ],
+      "answer": "The provided bulletins do not cover this.",
+      "status": "refused_guardrail",
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q26",
+      "category": "out_of_scope",
+      "question": "What is the minimum paid-in capital required to license a new property and casualty insurer in California?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2024_14",
+        "CA_BULLETIN_2025_2"
+      ],
+      "answer": "The provided bulletins do not cover this.",
+      "status": "refused_guardrail",
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q27",
+      "category": "out_of_scope",
+      "question": "Does California law require earthquake coverage to be offered to homeowners insurance policyholders?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2025_3",
+        "CA_BULLETIN_2025_2",
+        "CA_BULLETIN_2024_8"
+      ],
+      "answer": "The provided bulletins do not cover this.",
+      "status": "refused_guardrail",
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q28",
+      "category": "out_of_scope",
+      "question": "What are the continuing education requirements for a licensed California insurance producer?",
+      "relevant": [],
+      "retrieved": [
+        "CA_BULLETIN_2025_5",
+        "CA_BULLETIN_2024_14",
+        "CA_BULLETIN_2025_9"
+      ],
+      "answer": "The provided bulletins do not cover this.",
+      "status": "refused_guardrail",
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q29",
+      "category": "single_doc_factual",
+      "question": "Which fires triggered the residential property insurance cancellation/non-renewal moratorium announced in Bulletin 2025-1, and on what date did the Governor's emergency declaration take effect?",
+      "relevant": [
+        "CA_BULLETIN_2025_1"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_1",
+        "CA_BULLETIN_2025_13",
+        "CA_BULLETIN_2025_6"
+      ],
+      "answer": "According to Bulletin CA_BULLETIN_2026_1 (Bulletin 2026-1: One-Year Moratorium), the residential property insurance cancellation/non-renewal moratorium was triggered by the following fires:\n\n- Gifford Fire\n- ZIP Codes: 93023, 93105, 93224, 93249, 93251, 93252, 93254, 93268, 93401, 93405, 93409, 93410, 93420, 93421, 93422, 93424, 93432, 93433, 93441, 93442, 93444, 93445, 93449, 93453, 93454, 93455, 93458, 93460, 93461\n\nHowever, the Bulletin does not explicitly list the fires.\n\nAccording to Bulletin CA_BULLETIN_2025_13 (Bulletin 2025-13: Mandatory Moratorium on Cancellations and Non-Renewals of Policies of Residential Property Insurance After the Declaration of a State of Emergency), the moratorium was triggered by the following fires:\n\n- TCU Lightning Complex Fire\n- ZIP Codes: 95210, 95212, 95215, 95220, 95222, 95223, 95224, 95225, 95226, 95227, 95228, 95229, 95230",
+      "status": "answered",
+      "hit": 0.0,
+      "recall": 0.0,
+      "rr": 0.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 0.0
+    },
+    {
+      "id": "q30",
+      "category": "single_doc_factual",
+      "question": "Under California Insurance Code section 10103.7(b), what is the minimum percentage and dollar cap for the advance payment insurers must offer for contents coverage after a total loss, without requiring an itemized claim?",
+      "relevant": [
+        "CA_BULLETIN_2025_2"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_2"
+      ],
+      "answer": "According to Bulletin 2025-2, under California Insurance Code section 10103.7(b), the minimum percentage and dollar cap for the advance payment insurers must offer for contents coverage after a total loss, without requiring an itemized claim, are:\n\n* Minimum percentage: 30%\n* Dollar cap: Up to $250,000\n\nNote: This applies to primary dwelling structures covered by a residential property insurance policy, and includes the option for insurers to provide a payment without requiring an itemized claim.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.9,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q31",
+      "category": "single_doc_factual",
+      "question": "What is the 'efficient proximate cause' doctrine, and which California Insurance Code section codifies it according to Bulletin 2025-3?",
+      "relevant": [
+        "CA_BULLETIN_2025_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_3",
+        "CA_BULLETIN_2025_5"
+      ],
+      "answer": "According to Bulletin 2025-3, the \"efficient proximate cause\" doctrine is an interpretive rule for first-party insurance disputes that holds an insurer liable for a loss caused by a covered peril, even if a peril not contemplated by the contract was a remote cause. This doctrine is codified in California Insurance Code section 530.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q32",
+      "category": "single_doc_factual",
+      "question": "What was the total dollar amount of the FAIR Plan assessment approved via Commissioner Order 2025-1, and what percentage of that assessment may member insurers recoup from policyholders under Bulletin 2025-4?",
+      "relevant": [
+        "CA_BULLETIN_2025_4"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_4"
+      ],
+      "answer": "(Bulletin 2025-4)\n\nAccording to the bulletin, the total dollar amount of the FAIR Plan assessment approved via Commissioner Order 2025-1 was $1 billion. (Section 3)\n\nMember insurers may recoup 50% of the assessment amount from policyholders under Bulletin 2025-4. (Section 3)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.9,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q33",
+      "category": "single_doc_factual",
+      "question": "Under California Insurance Code section 12401, how many days after receipt by the Commissioner must a title insurance rate filing's effective date be delayed, at minimum?",
+      "relevant": [
+        "CA_BULLETIN_2025_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_5",
+        "CA_BULLETIN_2024_7"
+      ],
+      "answer": "According to Bulletin 2025-5, section 12401 states: \"Every filing shall set forth its effective date, which shall not be earlier than the 30th day following its receipt by the commissioner...\" Therefore, a title insurance rate filing's effective date must be delayed by at least 30 days after receipt by the Commissioner, but not earlier than 30 days.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q34",
+      "category": "single_doc_factual",
+      "question": "What was the Long-Term Care principle-based reserving annual aggregate assessment for Fiscal Year 2023-24?",
+      "relevant": [
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024",
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_2024_3"
+      ],
+      "answer": "(Bulletin 2024-2) The Long-Term Care principle-based reserving annual aggregate assessment for Fiscal Year 2023-24 was $1,406,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q35",
+      "category": "single_doc_factual",
+      "question": "Did the California Department of Insurance make any changes to the Export List in the 2023 annual renewal process described in Bulletin 2024-1?",
+      "relevant": [
+        "CA_BULLETIN_2024_1"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_1",
+        "CA_BULLETIN_2024_10",
+        "CA_BULLETIN_2025_16"
+      ],
+      "answer": "According to Bulletin 2024-1, no changes were made to the Export List in the 2023 annual renewal process. The bulletin states: \"In 2023, as required by law, my Department held a public hearing and comment period regarding the annual renewal of the list. After the public hearing and receiving comments, I decided to not make any changes to the Export List.\"",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q36",
+      "category": "single_doc_factual",
+      "question": "What was the Life principle-based reserving annual aggregate assessment for Fiscal Year 2023-24?",
+      "relevant": [
+        "CA_BULLETIN_2024_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_3",
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024",
+        "CA_BULLETIN_2025_8"
+      ],
+      "answer": "According to Bulletin CA_BULLETIN_2024_3, the Life principle-based reserving annual aggregate assessment for Fiscal Year 2023-24 was $2,666,000.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q37",
+      "category": "single_doc_factual",
+      "question": "Under California Insurance Code section 706.7, what is a 'reciprocal state,' and how often must the Commissioner notify domestic insurers of the list of reciprocal states?",
+      "relevant": [
+        "CA_BULLETIN_2024_4"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_4",
+        "CA_BULLETIN_2024_10"
+      ],
+      "answer": "(Bulletin 2024-4) Under California Insurance Code section 706.7, a \"reciprocal state\" is defined as a state whose laws prohibit an insurer domiciled therein from insuring the lives or persons of residents of, or property or operations located in, the State of California, unless it then holds a valid and subsisting certificate of authority issued by the Insurance Commissioner of this state.\n\nThe Commissioner must notify domestic insurers of the list of reciprocal states every four years.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q38",
+      "category": "single_doc_factual",
+      "question": "Which fire and county triggered the moratorium in Bulletin 2024-5, and on what date did it begin?",
+      "relevant": [
+        "CA_BULLETIN_2024_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_12",
+        "CA_BULLETIN_2024_11",
+        "CA_BULLETIN_2024_6"
+      ],
+      "answer": "The provided bulletins do not cover this.",
+      "status": "refused_guardrail",
+      "hit": 0.0,
+      "recall": 0.0,
+      "rr": 0.0,
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q39",
+      "category": "single_doc_factual",
+      "question": "Which three wildfires and counties are covered by the moratorium described in Bulletin 2024-6?",
+      "relevant": [
+        "CA_BULLETIN_2024_6"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_6",
+        "CA_BULLETIN_2024_12",
+        "CA_BULLETIN_2024_9"
+      ],
+      "answer": "According to Bulletin 2024-6, the three wildfires and counties covered by the moratorium are:\n\n1. Gold Complex Fire in Plumas County\n2. Park Fire in Butte and Tehama Counties\n3. Borel Fire in Kern County",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q40",
+      "category": "single_doc_factual",
+      "question": "Under the rate application review procedure announced in Bulletin 2024-7, how long does the Department have to initially review a complete rate application after it is placed on Public Notice, and how many 30-day extensions are allowed?",
+      "relevant": [
+        "CA_BULLETIN_2024_7"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_7"
+      ],
+      "answer": "According to Bulletin 2024-7, the Department shall review a complete rate application within 60 days of the filing's Public Notice date. If more time is needed, the process allows for up to two additional 30-day extensions, for a total of three 30-day extensions, after the original 60-day review period has ended.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.5,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q41",
+      "category": "single_doc_factual",
+      "question": "Under the FAIR Plan recoupment procedure established in Bulletin 2024-8, what percentage of an assessment up to $1 billion may a member insurer recoup, and what percentage applies above that threshold?",
+      "relevant": [
+        "CA_BULLETIN_2024_8"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_4",
+        "CA_BULLETIN_2024_8"
+      ],
+      "answer": "(Bulletin 2024-8) According to section (b) of Bulletin 2024-8, in the highly unlikely event that the FAIR Plan is authorized to levy assessments, a member insurer may recoup up to 50% of amounts assessed in one calendar year. However, a percentage of assessment above $1 billion is not explicitly stated; (Bulletin 2025-4) instead states that for assessments above $1 billion, a member insurer may recoup 100% of the amount above $1 billion, but only if the insurer confirms that its assessment payment was not covered by reinsurance or reimbursed through other means.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.5,
+      "faithfulness": 0.2,
+      "answer_relevance": 0.85
+    },
+    {
+      "id": "q42",
+      "category": "single_doc_factual",
+      "question": "Which wildfires does the 2nd Amended Bulletin 2024-9 cover, and on what dates were the underlying states of emergency declared?",
+      "relevant": [
+        "CA_BULLETIN_2024_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_9",
+        "CA_BULLETIN_2024_6"
+      ],
+      "answer": "According to Bulletin CA_BULLETIN_2024_9, the 2nd Amended Bulletin, the wildfires covered are the Line Fire and the Bridge Fire. The underlying states of emergency were declared on the following dates:\n\n* July 26, 2024: Gold Complex Fire (Plumas County)\n* July 30, 2024: Borel Fire (Kern County)\n* September 7, 2024: Line Fire (San Bernardino County)\n* September 11, 2024: Bridge Fire (Los Angeles and San Bernardino Counties), and Airport Fire (Orange and Riverside Counties)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.4,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q43",
+      "category": "single_doc_factual",
+      "question": "Did the California Department of Insurance make any changes to the Export List in the 2024 annual renewal process described in Bulletin 2024-10?",
+      "relevant": [
+        "CA_BULLETIN_2024_10"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_10",
+        "CA_BULLETIN_2024_1",
+        "CA_BULLETIN_2025_16"
+      ],
+      "answer": "According to Bulletin 2024-10, the California Department of Insurance did not make any changes to the Export List in the 2024 annual renewal process. The bulletin states: \"After the public hearing and receiving comments, I decided to not make any changes to the Export List.\"",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q44",
+      "category": "single_doc_factual",
+      "question": "Which fire and county are addressed by the moratorium in Bulletin 2024-11, and what ZIP codes are covered?",
+      "relevant": [
+        "CA_BULLETIN_2024_11"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_12",
+        "CA_BULLETIN_2024_9"
+      ],
+      "answer": "The provided bulletins do not cover Bulletin 2024-11.",
+      "status": "refused",
+      "hit": 0.0,
+      "recall": 0.0,
+      "rr": 0.0,
+      "faithfulness": null,
+      "answer_relevance": null
+    },
+    {
+      "id": "q45",
+      "category": "single_doc_factual",
+      "question": "Which two fires and counties does Bulletin 2024-12 address, and when were the emergency declarations made?",
+      "relevant": [
+        "CA_BULLETIN_2024_12"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_6",
+        "CA_BULLETIN_2024_9",
+        "CA_BULLETIN_2024_12"
+      ],
+      "answer": "(Bulletin 2024-12, Section 1) The bulletin addresses the Shelly Bear Fires, and the counties of Butte and Plumas, (which, according to Bulletin 2024-6, were declared a state of emergency on July 26, 2024, by Governor Gavin Newsom.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.3333333333333333,
+      "faithfulness": 0.0,
+      "answer_relevance": 0.8
+    },
+    {
+      "id": "q46",
+      "category": "single_doc_factual",
+      "question": "Which fire and county does Bulletin 2024-13 address, and when did the moratorium begin?",
+      "relevant": [
+        "CA_BULLETIN_2024_13"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_13",
+        "CA_BULLETIN_2024_12",
+        "CA_BULLETIN_2024_11"
+      ],
+      "answer": "Bulletin CA_BULLETIN_2024_13 addresses the Mountain Fire, and the moratorium began one year after the declaration of a state of emergency, as defined in Section 8558 of the Government Code.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 0.5
+    },
+    {
+      "id": "q47",
+      "category": "single_doc_factual",
+      "question": "According to Bulletin 2024-14, what must an insurer do regarding credit card convenience fees before charging them to policyholders?",
+      "relevant": [
+        "CA_BULLETIN_2024_14"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_14"
+      ],
+      "answer": "According to Bulletin 2024-14, an insurer must disclose all credit card convenience fees as part of a complete rate application (California Insurance Code section 1861.05, subd. (b)) and obtain prior approval from the Department before charging such fees (Section IV). Additionally, the insurer must publicly file an unredacted version of any agreement with a third-party vendor to collect and process credit card convenience fees as part of a complete rate application, for the Department to review and determine whether there is any rate impact (Section IV).",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q48",
+      "category": "comparison",
+      "question": "How did the FAIR Plan assessment recoupment procedure in Bulletin 2025-4 relate to the general procedure established in Bulletin 2024-8?",
+      "relevant": [
+        "CA_BULLETIN_2024_8",
+        "CA_BULLETIN_2025_4"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_4",
+        "CA_BULLETIN_2024_8"
+      ],
+      "answer": "(Bulletin 2025-4 and Bulletin 2024-8)\n\nAccording to Bulletin 2025-4, the FAIR Plan assessment recoupment procedure in the bulletin is related to the \"highly unlikely event\" scenario, where the FAIR Plan levies an assessment. In this scenario, the FAIR Plan member insurers may request the Insurance Commissioner's prior approval under Proposition 103 to seek recoupment from their policyholders of any FAIR Plan assessments.\n\nIn contrast, Bulletin 2024-8 establishes the general procedure for FAIR Plan member insurers to request the Insurance Commissioner's prior approval to seek recoupment from their policyholders of any FAIR Plan assessments in the event of an assessment. The bulletin notes that this procedure is intended for the \"highly unlikely event\" scenario, where an assessment has occurred since 1994.\n\n(Bulletin 2025-4, para. 3; Bulletin 2024-8, para. 1)\n\nCal. Ins. Code \u00a7 10095, subd. (c) and (a) & (c).\n\n(Cal. Ins. Code \u00a7 10095, subd. (c); Bulletin 2025-4, para. 5)",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 0.5
+    },
+    {
+      "id": "q49",
+      "category": "comparison",
+      "question": "How did the Life principle-based reserving annual aggregate assessment change from FY 2023-24 to FY 2024-25?",
+      "relevant": [
+        "CA_BULLETIN_2024_3",
+        "CA_BULLETIN_2025_8"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_3",
+        "CA_BULLETIN_2025_8",
+        "CA_BULLETIN_2025_9"
+      ],
+      "answer": "(Bulletin 2025-8)\n\nThe Life principle-based reserving annual aggregate assessment decreased from $2,666,000 in FY 2023-24 (as established by Bulletin 2024-3) to $3,188,000 in FY 2024-25, according to the assessment tiers shown in the table in Bulletin 2025-8.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 0.9
+    },
+    {
+      "id": "q50",
+      "category": "comparison",
+      "question": "How did the Long-Term Care principle-based reserving annual aggregate assessment change from FY 2023-24 to FY 2024-25?",
+      "relevant": [
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024",
+        "CA_BULLETIN_2025_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_9",
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024",
+        "CA_BULLETIN_2025_8"
+      ],
+      "answer": "According to Bulletin CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024 (passage [2]), the 2023-24 assessment was $1,406,000, and according to Bulletin CA_BULLETIN_2025_9 (passage [1]), the 2024-25 assessment is $1,433,000. Therefore, the Long-Term Care principle-based reserving annual aggregate assessment increased by $27,000 from FY 2023-24 to FY 2024-25.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.9,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q51",
+      "category": "comparison",
+      "question": "Across the 2023, 2024, and 2025 Export List bulletins, in which year did the Department first add or modify a coverage category, and what was the change?",
+      "relevant": [
+        "CA_BULLETIN_2024_1",
+        "CA_BULLETIN_2024_10",
+        "CA_BULLETIN_2025_16"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_16",
+        "CA_BULLETIN_2024_1",
+        "CA_BULLETIN_2024_10"
+      ],
+      "answer": "<<<USER_QUESTION_START>>>\nAccording to Bulletin CA_BULLETIN_2025_16, the change was made in 2025, as required by law, and the two changes were the addition of \u201cCommercial Cannabis Related Operations\u201d and the modification of \u201cFoster Family (Occurrence Based Only)\u201d to \u201cFoster Family and Foster Family Agency Liability\u201d. The Department first added or modified a coverage category in 2025.\n\n<<<USER_QUESTION_END>>>",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q52",
+      "category": "comparison",
+      "question": "Bulletins 2025-2 and 2025-3 both address wildfire-related claims from the January 2025 Southern California fires - what distinct legal issue does each cover?",
+      "relevant": [
+        "CA_BULLETIN_2025_2",
+        "CA_BULLETIN_2025_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_3",
+        "CA_BULLETIN_2025_2",
+        "CA_BULLETIN_2025_4"
+      ],
+      "answer": "According to Bulletin 2025-2 and 2025-3, the distinct legal issue each covers is related to the payment of wildfire-related claims.\n\nBulletin 2025-2: \"Important Existing Consumer Protections for Wildfire Survivors, Including Advance Claim Payments\" addresses the issue of advance claim payments for policyholders who suffered a total loss due to the wildfires. It reminds insurance companies of their obligation to provide advance payments under existing California law, as stated in Insurance Code section 530.\n\nBulletin 2025-3: \"Coverage of Flood, Mudslide, and Earth Movement Claims Relating to Recent Wildfires\" addresses the issue of the \"efficient proximate cause\" doctrine, which determines whether a wildfire-related loss is covered by insurance. It reminds insurers of their obligation to comply with existing law regarding this doctrine, which holds that insurers may not exclude losses caused by flooding, mudflow, debris flow, mudslide, landslide, or other similar events if the facts establish that a wildfire (a covered peril) was the efficient proximate cause of the event.\n\nIn other words, Bulletin 2025-2 focuses on the obligation to provide advance payments to policyholders, while Bulletin 2025-3 focuses on the determination of coverage for wildfire-related losses under the \"efficient proximate cause\" doctrine.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.7,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q53",
+      "category": "temporal_disambiguation",
+      "question": "Which moratorium bulletin concerns the Thompson fire, and in which county?",
+      "relevant": [
+        "CA_BULLETIN_2024_5"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_5",
+        "CA_BULLETIN_2024_6"
+      ],
+      "answer": "Bulletin CA_BULLETIN_2024_5 ( Bulletin 2024-5: Mandatory Moratorium on Cancellations and Non-Renewals of Policies of Residential Property Insurance After the Declaration of a State of Emergency) concerns the Thompson fire. This bulletin affects Butte County.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.4,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q54",
+      "category": "temporal_disambiguation",
+      "question": "Which bulletin addresses the moratorium arising from the Gold Complex, Park, and Borel Fires together?",
+      "relevant": [
+        "CA_BULLETIN_2024_6"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_6",
+        "CA_BULLETIN_2026_6"
+      ],
+      "answer": "Bulletin CA_BULLETIN_2024_6.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q55",
+      "category": "temporal_disambiguation",
+      "question": "Which 2nd Amended moratorium bulletin covers the Line, Bridge, and Airport Fires?",
+      "relevant": [
+        "CA_BULLETIN_2024_9"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_9",
+        "CA_BULLETIN_2024_6"
+      ],
+      "answer": "(Bulletin 2024-9, 2nd Amended): This bulletin covers the Line, Bridge, and Airport Fires, specifically providing moratoriums against cancellations and non-renewals of policies of residential property insurance for ZIP Codes associated with these fires.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q56",
+      "category": "temporal_disambiguation",
+      "question": "Which moratorium bulletin covers the Boyles Fire in Lake County?",
+      "relevant": [
+        "CA_BULLETIN_2024_11"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_11",
+        "CA_BULLETIN_2025_1"
+      ],
+      "answer": "Bulletin 2024-11. The moratorium bulletin specifically mentions the following ZIP Codes as subject to the moratorium due to the Boyles Fire: \u2022 Boyles Fire: 95422, 95423, 95451, 95457, 95679, 95987",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.2,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q57",
+      "category": "temporal_disambiguation",
+      "question": "Which moratorium bulletin covers both the Shelly Fire and the Bear Fire?",
+      "relevant": [
+        "CA_BULLETIN_2024_12"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_12",
+        "CA_BULLETIN_2025_6"
+      ],
+      "answer": "Bulletin 2024-12 covers both the Shelly Fire and the Bear Fire.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q58",
+      "category": "temporal_disambiguation",
+      "question": "Which moratorium bulletin addresses the Mountain Fire in Ventura County?",
+      "relevant": [
+        "CA_BULLETIN_2024_13"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2024_13",
+        "CA_BULLETIN_2025_1",
+        "CA_BULLETIN_2025_6"
+      ],
+      "answer": "Bulletin CA_BULLETIN_2024_13 - Bulletin 2024-13 addresses the Mountain Fire in Ventura County.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.0,
+      "answer_relevance": 1.0
+    },
+    {
+      "id": "q59",
+      "category": "temporal_disambiguation",
+      "question": "Which amended moratorium bulletin covers the Palisades, Eaton, Hurst, Lidia, Sunset, Woodley, and Olivas Fires from January 2025, and how many times was it amended?",
+      "relevant": [
+        "CA_BULLETIN_2025_1"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2025_6",
+        "CA_BULLETIN_2025_1",
+        "CA_BULLETIN_2025_4"
+      ],
+      "answer": "[Bulletin 2025-6 and Bulletin 2025-1: A comparison of the two bulletins shows that Bulletin 2025-1 provides more specific ZIP codes affected by the moratorium.]\n\nBulletin CA_BULLETIN_2025_1 - Bulletin 2025-1: One-Year Moratorium for Palisades, Eaton, Hurst, Lidia, Sunset, and Woodley Fires\n\nThe bulletin that covers the Palisades, Eaton, Hurst, Lidia, Sunset, and Woodley Fires from January 2025 is Bulletin 2025-1.\n\nThe bulletin has not been amended, as stated in the passage: \"Please Note: If additional changes are needed, this bulletin will be amended accordingly.\"",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 0.5,
+      "faithfulness": 0.0,
+      "answer_relevance": 0.2
+    },
+    {
+      "id": "q60",
+      "category": "temporal_disambiguation",
+      "question": "Which bulletin gives the Life principle-based reserving assessment specifically for Fiscal Year 2023-24, as distinct from FY 2024-25 or FY 2025-26?",
+      "relevant": [
+        "CA_BULLETIN_2024_3"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_2026_3",
+        "CA_BULLETIN_2026_4",
+        "CA_BULLETIN_2025_8"
+      ],
+      "answer": "Bulletin 2025-8 (CA_BULLETIN_2025_8) provides the assessment for Fiscal Year (FY) 2024-25. \n\nFor Fiscal Year (FY) 2023-24, the answer is not found in the provided bulletins. \n\nThe provided bulletins do not cover this.",
+      "status": "answered",
+      "hit": 0.0,
+      "recall": 0.0,
+      "rr": 0.0,
+      "faithfulness": 1.0,
+      "answer_relevance": 0.0
+    },
+    {
+      "id": "q61",
+      "category": "temporal_disambiguation",
+      "question": "Which bulletin gives the Long-Term Care principle-based reserving assessment specifically for Fiscal Year 2023-24?",
+      "relevant": [
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024"
+      ],
+      "retrieved": [
+        "CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024",
+        "CA_BULLETIN_2024_3",
+        "CA_BULLETIN_2025_9"
+      ],
+      "answer": "Bulletin CA_BULLETIN_FY_2023_24_PBR_LTC_Insurer_Bulletin_3_28_2024 (specifically the table in section 1) provides the Long-Term Care principle-based reserving assessment specifically for Fiscal Year 2023-24, with an aggregate annual assessment of $1,406,000 and the assessment tiers shown in the table.",
+      "status": "answered",
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0,
+      "faithfulness": 0.2,
+      "answer_relevance": 1.0
+    }
+  ]
+}
